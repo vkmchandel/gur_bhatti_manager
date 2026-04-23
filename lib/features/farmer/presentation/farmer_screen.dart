@@ -47,7 +47,7 @@ class _FarmerScreenState extends State<FarmerScreen> {
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(80),
           child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
@@ -70,6 +70,7 @@ class _FarmerScreenState extends State<FarmerScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -101,7 +102,7 @@ class _FarmerScreenState extends State<FarmerScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 80),
+            const SizedBox(height: 100),
           ],
         ),
       ),

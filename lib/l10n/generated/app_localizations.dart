@@ -584,6 +584,36 @@ abstract class AppLocalizations {
   /// **'PAY NOW'**
   String get payNow;
 
+  /// No description provided for @activeSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Session'**
+  String get activeSession;
+
+  /// No description provided for @recentSupply.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent Supply'**
+  String get recentSupply;
+
+  /// No description provided for @sessionWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Session Weight'**
+  String get sessionWeight;
+
+  /// No description provided for @sessionEarned.
+  ///
+  /// In en, this message translates to:
+  /// **'Session Earned'**
+  String get sessionEarned;
+
+  /// No description provided for @sessionBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Session Balance'**
+  String get sessionBalance;
+
   /// No description provided for @rate.
   ///
   /// In en, this message translates to:

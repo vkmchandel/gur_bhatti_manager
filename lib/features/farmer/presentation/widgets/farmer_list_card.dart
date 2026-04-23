@@ -40,11 +40,10 @@ class FarmerListCard extends StatelessWidget {
     final avatarColor = _getAvatarColor(farmer.name, scheme);
 
     return Card(
-      elevation: 0,
+      elevation: 0.5,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: scheme.outlineVariant),
       ),
       child: InkWell(
         onTap: onOpenDetail,
@@ -53,15 +52,9 @@ class FarmerListCard extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: avatarColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: avatarColor.withValues(alpha: 0.2)),
-                ),
-                alignment: Alignment.center,
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: avatarColor.withValues(alpha: 0.1),
                 child: Text(
                   _getInitials(farmer.name),
                   style: TextStyle(
@@ -98,13 +91,13 @@ class FarmerListCard extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton.filledTonal(
+              IconButton(
                 onPressed: () => launchDialer(farmer.mobile),
                 icon: const Icon(Icons.phone_outlined, size: 20),
                 style: IconButton.styleFrom(
                   backgroundColor: scheme.primary.withValues(alpha: 0.05),
                   foregroundColor: scheme.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.all(12),
                 ),
               ),
             ],

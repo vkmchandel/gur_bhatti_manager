@@ -253,6 +253,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get payNow => 'PAY NOW';
 
   @override
+  String get activeSession => 'Active Session';
+
+  @override
+  String get recentSupply => 'Recent Supply';
+
+  @override
+  String get sessionWeight => 'Session Weight';
+
+  @override
+  String get sessionEarned => 'Session Earned';
+
+  @override
+  String get sessionBalance => 'Session Balance';
+
+  @override
   String get rate => 'Rate';
 
   @override

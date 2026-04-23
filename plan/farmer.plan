@@ -1,0 +1,73 @@
+### Farmer Screen Refinements (List View)
+
+1. Visual Inconsistency (Cards)
+   - Issue: Farmer cards have a prominent black outline, while Dashboard cards use soft shadows.
+   - Refinement: Update FarmerListCard to match Dashboard style—remove the border and use elevation/shadow instead.
+
+2. Avatar Styling
+   - Issue: Farmer initials are in a rounded square box.
+   - Refinement: Switch to a Circular Avatar for farmers to better distinguish person entities from other data cards.
+
+3. Call Button UI
+   - Issue: The call button has an internal border that looks "boxed-in."
+   - Refinement: Use a Ghost Button style (icon only with a soft circular background) for the call action.
+
+4. Spacing & Header Alignment
+   - Issue: Tight spacing between Search Bar and "REGISTERED FARMERS" header.
+   - Refinement: Standardize vertical margins between the search bar, list headers, and the cards.
+
+5. Register Farmer Button (List Inset)
+   - Issue: The floating "REGISTER FARMER" button may overlap the last item in the list.
+   - Refinement: Add sufficient bottom padding/inset to the ScrollView to ensure the final card is fully visible above the button.
+
+### Farmer Details (Ledger) Functional Updates
+
+6. Recent Supply Section Header
+   - Change: Rename "Supply History" to "Recent Supply".
+   - Logic: Keep header clean as session info is already provided in the AppBar (Point 9).
+
+7. Limited Display & "See All"
+   - Logic: Show only the last 5 supply entries for the current session by default.
+   - Action: Add a "See all" button that redirects to the Log screen with a filter applied for this Farmer's ID.
+
+8. Session Filtering: Functional
+   - Constraint: The Recent Supply list should strictly show data from the current active session only.
+
+### Farmer Details (Ledger) Financial & Session Management
+
+9. Screen-Wide Session Context
+   - Feature: Add a subtitle to the AppBar showing the active session name (e.g., "Active Session: 2025-26").
+   - UX: Immediately clarifies that the financial data below is for the current timeframe.
+
+10. Clarify Financial Labels
+   - Refinement: Update summary card labels to be session-specific.
+   - Labels: "TOTAL WEIGHT" -> "SESSION WEIGHT", "BALANCE DUE" -> "SESSION BALANCE".
+
+11. Data Scope Consistency
+   - Logic: Ensure all summary calculations (Weight, Earned, Paid, Balance) on this screen are strictly filtered by the activeSessionId.
+
+12. Historical Access via Log Filter
+   - Logic: The "See All" button redirects to the Log screen with filters for both Farmer ID and Current Session.
+   - Flexibility: This allows the user to manually remove the session filter on the Log screen to view "All-Time" data.
+
+13. Card Consistency (Details Screen)
+   - Refinement: Update the cards in the Recent Supply list (Ledger screen) to match the Dashboard style.
+   - Action: Remove the prominent black border and use a soft shadow/elevation (elevation: 0.5) for a lighter, more modern feel.
+
+14. FAB Removal (Details Screen)
+   - Change: Remove the "Log New Supply" Floating Action Button from the Farmer Details/Ledger screen.
+   - Reasoning: Entry is typically done via the Dashboard or Main Log to ensure proper workflow, keeping the Ledger focused on viewing data.
+
+### Farmer Profile & Banking (Ledger Screen)
+
+15. Redesign Profile Header to "Identity Card"
+    - Change: Replace the simple Row header with a structured, cohesive "Farmer Identity" section.
+    - UX: Group permanent data (Village, Mobile) and Banking data (Bank, A/C, IFSC) into a logical grid.
+    - Visuals: Use small Material 3 icons (location, phone, account_balance, payments) to label each data point without using extra text.
+
+16. Smart Banking Display
+    - Logic: Use conditional rendering—if bank info is missing, show a subtle "Missing Bank Info" button that links to the Edit screen.
+    - Utility: Implement a "Tap to Copy" feature for the Account Number and IFSC code to facilitate easy payments in external banking apps.
+
+17. Visual Style Consistency
+    - Style: The Identity Card should use a Surface/White background with very light borders to contrast with the Dark Session Summary card below it.
