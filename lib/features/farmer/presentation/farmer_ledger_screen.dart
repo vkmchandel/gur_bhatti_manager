@@ -3,20 +3,23 @@ import 'package:flutter/services.dart';
 import 'package:gur_bhatti_manager/l10n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/utils/phone_launcher.dart';
-import '../../../core/widgets/payment_status_chip.dart';
 import '../../../data/demo_catalog.dart';
 
-class FarmerLedgerScreen extends StatelessWidget {
+class FarmerLedgerScreen extends StatefulWidget {
   const FarmerLedgerScreen({super.key, required this.farmerId});
 
   final String farmerId;
 
   @override
+  State<FarmerLedgerScreen> createState() => _FarmerLedgerScreenState();
+}
+
+class _FarmerLedgerScreenState extends State<FarmerLedgerScreen> {
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final farmer = DemoCatalog.farmerById(farmerId);
+    final farmer = DemoCatalog.farmerById(widget.farmerId);
 
     final l10n = AppLocalizations.of(context)!;
 
@@ -47,70 +50,336 @@ class FarmerLedgerScreen extends StatelessWidget {
     }
 
     final sessionId = DemoCatalog.activeSessionId;
-    final activeSession = DemoCatalog.sessions.firstWhere((s) => s.id == sessionId);
-    final rows = DemoCatalog.procurementsForFarmer(farmerId, sessionId: sessionId);
-    // Sort by date descending and take last 5
-    final recentRows = [...rows]..sort((a, b) => b.date.compareTo(a.date));
-    final displayRows = recentRows.take(5).toList();
+    final procurements = DemoCatalog.procurementsForFarmer(widget.farmerId, sessionId: sessionId);
+    final payments = DemoCatalog.paymentsForFarmer(widget.farmerId, sessionId: sessionId);
 
     var totalWt = 0.0;
     var totalAmt = 0.0;
-    var totalPaid = 0.0;
-    for (final p in rows) {
+    var totalPaidAtSupply = 0.0;
+    for (final p in procurements) {
       totalWt += p.netWeightQtl;
       totalAmt += p.totalAmount;
-      totalPaid += p.amountPaid;
+      totalPaidAtSupply += p.amountPaid;
     }
+
+    double totalManualPaid = 0;
+    for (final p in payments) {
+      totalManualPaid += p.amount;
+    }
+
+    final totalPaid = totalPaidAtSupply + totalManualPaid;
     final balance = totalAmt - totalPaid;
 
+    final sortedProcurements = [...procurements]..sort((a, b) => b.date.compareTo(a.date));
+
     return Scaffold(
-      backgroundColor: scheme.surface,
+      backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1B3D2F)),
+          onPressed: () => context.pop(),
+        ),
         title: Column(
           children: [
-            Text(farmer.name.toUpperCase()),
+            const Text(
+              'FARMER PROFILE',
+              style: TextStyle(
+                color: Color(0xFF365E32),
+                fontWeight: FontWeight.w900,
+                fontSize: 16,
+                letterSpacing: 1.1,
+              ),
+            ),
             Text(
-              '${l10n.activeSession}: ${activeSession.name}',
+              'ACTIVE SESSION: ${DemoCatalog.activeSession()?.name ?? 'N/A'}',
               style: theme.textTheme.labelSmall?.copyWith(
-                color: scheme.outline,
+                color: Colors.grey,
                 fontWeight: FontWeight.bold,
+                fontSize: 10,
               ),
             ),
           ],
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            onPressed: () => context.push('/farmers/$farmerId/edit'),
-            icon: const Icon(Icons.edit_note_rounded),
-          ),
-        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await context.push('/farmers/${widget.farmerId}/payment');
+          setState(() {});
+        },
+        backgroundColor: const Color(0xFF1B5E20),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: const Stack(
+          alignment: Alignment.center,
+          children: [
+            Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: Icon(Icons.currency_rupee_rounded, size: 20, color: Colors.white),
+            ),
+            Padding(
+              padding: EdgeInsets.only(left: 14, top: 10),
+              child: Icon(Icons.add, size: 14, color: Colors.white),
+            ),
+          ],
+        ),
       ),
       body: Scrollbar(
         thumbVisibility: true,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           children: [
-            _buildIdentityCard(context, theme, scheme, farmer, l10n),
-            const SizedBox(height: 16),
-            _buildFinancialSummary(theme, scheme, totalWt, totalAmt, totalPaid, balance, l10n),
+            _buildIdentitySection(context, farmer, theme, scheme),
+            const SizedBox(height: 24),
+            _buildFinancialSummary(totalWt, procurements.length, totalAmt, totalPaid, balance),
             const SizedBox(height: 32),
-            _buildSectionHeader(
-              theme,
-              scheme,
-              l10n.recentSupply.toUpperCase(),
-              l10n.seeAll.toUpperCase(),
-              onSeeAll: () => context.go('/log?farmerId=$farmerId&sessionId=$sessionId'),
+            Row(
+              children: [
+                Text(
+                  'RECENT DELIVERIES',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: const Color(0xFF1B5E20),
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(child: Divider(thickness: 1, color: Color(0xFFE2E8F0))),
+              ],
             ),
             const SizedBox(height: 12),
-            if (displayRows.isEmpty)
-              _buildEmptyState(theme, scheme, l10n)
+            if (sortedProcurements.isEmpty)
+              _buildEmptyDeliveryState(theme, scheme)
             else
-              ...displayRows.map((p) => _ProcurementLogItem(procurement: p)),
+              ...sortedProcurements.take(3).map((p) => _DeliveryItem(
+                    date: p.date,
+                    weight: p.netWeightQtl,
+                    amount: p.totalAmount,
+                    onTap: () => context.push('/procurement/receipt/${p.id}'),
+                  )),
             const SizedBox(height: 32),
+            Row(
+              children: [
+                Text(
+                  'PAYMENT HISTORY',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: const Color(0xFF1B5E20),
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(child: Divider(thickness: 1, color: Color(0xFFE2E8F0))),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (payments.isEmpty)
+              _buildEmptyState(theme, scheme)
+            else
+              ...payments.map((p) => _PaymentHistoryItem(
+                    date: p.date,
+                    amount: p.amount,
+                    onEdit: () async {
+                      await context.push('/farmers/${widget.farmerId}/payment', extra: p);
+                      setState(() {});
+                    },
+                    onDelete: () {
+                      _showDeleteConfirmation(context, p.id);
+                    },
+                  )),
+            const SizedBox(height: 80),
           ],
         ),
       ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, String paymentId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Payment'),
+        content: const Text('Are you sure you want to delete this payment record?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
+          TextButton(
+            onPressed: () {
+              DemoCatalog.deletePayment(paymentId);
+              Navigator.pop(context);
+              setState(() {});
+            },
+            child: const Text('DELETE', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIdentitySection(BuildContext context, var farmer, ThemeData theme, ColorScheme scheme) {
+    return Card(
+      elevation: 0.5,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF365E32),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF365E32).withValues(alpha: 0.2),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    _getInitials(farmer.name),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
+                      Text(
+                        farmer.name,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1E293B),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD9E9D5),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'MEMBER SINCE 2023',
+                          style: TextStyle(
+                            color: Color(0xFF365E32),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => context.push('/farmers/${widget.farmerId}/edit'),
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  visualDensity: VisualDensity.compact,
+                  color: scheme.outline,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(child: _buildInfoItem(Icons.location_on_outlined, 'LOCATION', farmer.village)),
+                Expanded(child: _buildInfoItem(Icons.smartphone_outlined, 'PHONE', farmer.mobile)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _buildInfoItem(Icons.account_balance_outlined, 'BANK', farmer.bankName)),
+                Expanded(
+                  child: _buildInfoItem(
+                    Icons.credit_card_outlined,
+                    'ACCOUNT',
+                    farmer.bankAccount ?? 'N/A',
+                    isCopyable: farmer.bankAccount != null,
+                    ifsc: farmer.ifscCode,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(IconData icon, String label, String value, {bool isCopyable = false, String? ifsc}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: const Color(0xFF64748B)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      value,
+                      style: const TextStyle(
+                        color: Color(0xFF1E293B),
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  if (isCopyable) ...[
+                    const SizedBox(width: 8),
+                    _CopyButton(text: value, label: label, isSmall: true),
+                  ],
+                ],
+              ),
+              if (ifsc != null) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'IFSC: $ifsc',
+                    style: const TextStyle(color: Color(0xFF64748B), fontSize: 9, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -123,201 +392,35 @@ class FarmerLedgerScreen extends StatelessWidget {
     return parts[0][0].toUpperCase();
   }
 
-  Color _getAvatarColor(String name, ColorScheme scheme) {
-    final colors = [
-      scheme.primary,
-      scheme.secondary,
-      const Color(0xFF0F172A),
-    ];
-    final index = name.length % colors.length;
-    return colors[index];
-  }
-
-  Widget _buildIdentityCard(BuildContext context, ThemeData theme, ColorScheme scheme, var farmer, AppLocalizations l10n) {
-    final avatarColor = _getAvatarColor(farmer.name, scheme);
-    final hasBankInfo = farmer.bankAccount != null && farmer.bankAccount!.isNotEmpty;
-
-    return Card(
-      elevation: 0.5,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: avatarColor,
-                  child: Text(
-                    _getInitials(farmer.name),
-                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        farmer.name,
-                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        '#F-${farmer.id.length > 4 ? farmer.id.substring(0, 4).toUpperCase() : farmer.id.toUpperCase()} • Member since 2024',
-                        style: theme.textTheme.labelSmall?.copyWith(color: scheme.outline),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => launchDialer(farmer.mobile),
-                  icon: const Icon(Icons.phone_outlined), // Changed to outlined to match ListCard
-                  style: IconButton.styleFrom(
-                    backgroundColor: scheme.primary.withValues(alpha: 0.05),
-                    foregroundColor: scheme.primary,
-                  ),
-                ),
-              ],
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Divider(height: 1, thickness: 0.5), // Thinner divider
-            ),
-            GridView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisExtent: 32, // More compact
-                crossAxisSpacing: 16,
-              ),
-              children: [
-                _buildInfoTile(Icons.location_on_outlined, farmer.village, scheme),
-                _buildInfoTile(Icons.smartphone_rounded, farmer.mobile, scheme),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: scheme.primary.withValues(alpha: 0.03), // Subtler green tint
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.account_balance_outlined, size: 14, color: scheme.primary),
-                      const SizedBox(width: 8),
-                      Text(
-                        l10n.bankingInfo.split('(')[0].trim(),
-                        style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold, color: scheme.primary),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  if (hasBankInfo) ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(farmer.bankName, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
-                        _CopyButton(text: farmer.bankAccount!, label: 'A/C'),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text('IFSC: ', style: theme.textTheme.bodySmall?.copyWith(color: scheme.outline)),
-                        Text(farmer.ifscCode ?? 'N/A', style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 8),
-                        if (farmer.ifscCode != null) _CopyButton(text: farmer.ifscCode!, label: 'IFSC', isSmall: true),
-                      ],
-                    ),
-                  ] else ...[
-                    Row(
-                      children: [
-                        Icon(Icons.warning_amber_rounded, size: 14, color: scheme.error),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'No bank details registered.',
-                            style: theme.textTheme.bodySmall?.copyWith(color: scheme.error),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () => context.push('/farmers/${farmer.id}/edit'),
-                          child: const Text('ADD'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoTile(IconData icon, String value, ColorScheme scheme) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: scheme.outline),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFinancialSummary(ThemeData theme, ColorScheme scheme, double wt, double amt, double paid, double bal, AppLocalizations l10n) {
+  Widget _buildFinancialSummary(double wt, int trolleys, double earned, double paid, double bal) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: scheme.onSurface,
+        color: const Color(0xFF0F172A),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _SummaryStat(label: '${l10n.sessionWeight.toUpperCase()}', value: '${wt.toStringAsFixed(1)} Qtl', isLight: true),
-              _SummaryStat(label: '${l10n.sessionEarned.toUpperCase()}', value: '₹${(amt / 1000).toStringAsFixed(1)}k', isLight: true),
+              _buildSummaryItem('SESSION WEIGHT (QTL)', wt.toStringAsFixed(1), crossAxisAlignment: CrossAxisAlignment.start),
+              const Spacer(),
+              _buildSummaryItem('TOTAL TROLLEYS', trolleys.toString(), crossAxisAlignment: CrossAxisAlignment.center),
+              const Spacer(),
+              _buildSummaryItem('SESSION EARNED (₹)', '₹${(earned / 1000).toStringAsFixed(1)}k', crossAxisAlignment: CrossAxisAlignment.end),
             ],
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Divider(color: Colors.white12),
-          ),
+          const SizedBox(height: 24),
+          const Divider(color: Colors.white10, height: 1),
+          const SizedBox(height: 24),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l10n.sessionBalance.toUpperCase(), style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
-                  Text('₹${bal.toStringAsFixed(0)}', style: TextStyle(color: scheme.secondary, fontSize: 28, fontWeight: FontWeight.w900)),
-                ],
-              ),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: scheme.secondary,
-                  foregroundColor: Colors.black,
-                  textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                ),
-                child: Text(l10n.payNow.toUpperCase()),
+              _buildSummaryItem('TOTAL PAID (₹)', '₹${(paid / 1000).toStringAsFixed(1)}k', crossAxisAlignment: CrossAxisAlignment.start),
+              const Spacer(),
+              _buildSummaryItem('BALANCE DUE (₹)', '₹${bal.toStringAsFixed(0)}',
+                crossAxisAlignment: CrossAxisAlignment.end,
+                valueColor: const Color(0xFFFFB300),
+                valueSize: 22,
               ),
             ],
           ),
@@ -326,48 +429,105 @@ class FarmerLedgerScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(ThemeData theme, ColorScheme scheme, String title, String actionLabel, {VoidCallback? onSeeAll}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildSummaryItem(String label, String value, {
+    CrossAxisAlignment crossAxisAlignment = CrossAxisAlignment.start,
+    Color valueColor = Colors.white,
+    double valueSize = 20,
+  }) {
+    return Column(
+      crossAxisAlignment: crossAxisAlignment,
       children: [
-        Expanded(
-          child: Text(
-            title,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: scheme.primary,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.1,
-              fontSize: 11,
-            ),
-            overflow: TextOverflow.ellipsis,
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white54,
+            fontSize: 8,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.8,
           ),
         ),
-        TextButton(
-          onPressed: onSeeAll,
-          style: TextButton.styleFrom(
-            visualDensity: VisualDensity.compact,
-            foregroundColor: scheme.secondary,
-            textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: TextStyle(
+            color: valueColor,
+            fontSize: valueSize,
+            fontWeight: FontWeight.bold,
           ),
-          child: Text(actionLabel),
         ),
       ],
     );
   }
 
-  Widget _buildEmptyState(ThemeData theme, ColorScheme scheme, AppLocalizations l10n) {
+  Widget _buildEmptyState(ThemeData theme, ColorScheme scheme) {
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: scheme.primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant, style: BorderStyle.none),
       ),
       child: Column(
         children: [
-          Icon(Icons.inventory_2_outlined, size: 48, color: scheme.outline),
+          Icon(Icons.payments_outlined, size: 48, color: scheme.outline),
           const SizedBox(height: 16),
-          Text(l10n.noSupplies, style: theme.textTheme.bodySmall?.copyWith(color: scheme.outline)),
+          Text("No payments recorded yet.", style: theme.textTheme.bodySmall?.copyWith(color: scheme.outline)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyDeliveryState(ThemeData theme, ColorScheme scheme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      child: Text("No deliveries recorded yet.", style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
+    );
+  }
+}
+
+class _DeliveryItem extends StatelessWidget {
+  final DateTime date;
+  final double weight;
+  final double amount;
+  final VoidCallback onTap;
+
+  const _DeliveryItem({
+    required this.date,
+    required this.weight,
+    required this.amount,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+            child: Row(
+              children: [
+                Text(
+                  '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year.toString().substring(2)}',
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(width: 24),
+                Text(
+                  '${weight.toStringAsFixed(2)} Qtl',
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold, color: const Color(0xFF1B5E20)),
+                ),
+                const Spacer(),
+                Text(
+                  '₹${amount.toStringAsFixed(0)}',
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+              ],
+            ),
+          ),
+          const Divider(height: 1, thickness: 0.5),
         ],
       ),
     );
@@ -383,7 +543,6 @@ class _CopyButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: () {
         Clipboard.setData(ClipboardData(text: text));
@@ -392,19 +551,19 @@ class _CopyButton extends StatelessWidget {
         );
       },
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 8, vertical: isSmall ? 2 : 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: scheme.secondary.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(6),
+          color: const Color(0xFFFFEFD5),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (!isSmall) ...[
-              Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: scheme.secondary)),
-              const SizedBox(width: 6),
+              Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFD97706))),
+              const SizedBox(width: 8),
             ],
-            Icon(Icons.copy_rounded, size: isSmall ? 10 : 12, color: scheme.secondary),
+            const Icon(Icons.copy_rounded, size: 14, color: Color(0xFFD97706)),
           ],
         ),
       ),
@@ -412,96 +571,57 @@ class _CopyButton extends StatelessWidget {
   }
 }
 
-class _SummaryStat extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool isLight;
-  const _SummaryStat({required this.label, required this.value, this.isLight = false});
+class _PaymentHistoryItem extends StatelessWidget {
+  final DateTime date;
+  final double amount;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(color: isLight ? Colors.white70 : Colors.black54, fontSize: 9, fontWeight: FontWeight.bold)),
-        Text(value, style: TextStyle(color: isLight ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.w900)),
-      ],
-    );
-  }
-}
-
-class _ProcurementLogItem extends StatelessWidget {
-  final dynamic procurement;
-  const _ProcurementLogItem({required this.procurement});
+  const _PaymentHistoryItem({
+    required this.date,
+    required this.amount,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final l10n = AppLocalizations.of(context)!;
 
-    return Card(
-      elevation: 0.5,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        '${procurement.date.day}/${procurement.date.month}/${procurement.date.year}',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: scheme.outline,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      PaymentStatusChip(status: procurement.paymentStatus),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${procurement.netWeightQtl.toStringAsFixed(2)} Qtl',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    '${l10n.rate}: ₹${procurement.ratePerQtl}/Qtl • ${l10n.veh}: ${procurement.vehicleNumber}',
-                    style: theme.textTheme.bodySmall?.copyWith(color: scheme.outline),
-                  ),
-                ],
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          child: Row(
+            children: [
+              Text(
+                '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year.toString().substring(2)}',
+                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
               ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '₹${procurement.totalAmount.toStringAsFixed(0)}',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  '${l10n.paid.toUpperCase()}: ₹${procurement.amountPaid.toStringAsFixed(0)}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: scheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ],
+              const SizedBox(width: 24),
+              Text(
+                '₹${amount.toStringAsFixed(0)}',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined, size: 20),
+                visualDensity: VisualDensity.compact,
+                color: scheme.outline,
+              ),
+              IconButton(
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                visualDensity: VisualDensity.compact,
+                color: scheme.error.withValues(alpha: 0.7),
+              ),
+            ],
+          ),
         ),
-      ),
+        const Divider(height: 1, thickness: 0.5),
+      ],
     );
   }
 }

@@ -1,13 +1,17 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gur_bhatti_manager/l10n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../../core/domain/payment_status.dart';
 import '../../../data/demo_catalog.dart';
+import '../../../data/procurement_model.dart';
 import '../../../features/farmer/domain/farmer.dart';
 
 class AddProcurementScreen extends StatefulWidget {
@@ -27,15 +31,16 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
   final _rateController = TextEditingController(text: '320');
   final _vehicleController = TextEditingController();
 
-  XFile? _photo;
+  DateTime _selectedDate = DateTime.now();
+  final List<XFile> _photos = [];
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    if (DemoCatalog.farmers.isNotEmpty) {
-      _selectedFarmer = DemoCatalog.farmers.first;
-    }
+    _grossController.addListener(_updateCalculations);
+    _tareController.addListener(_updateCalculations);
+    _rateController.addListener(() => setState(() {}));
   }
 
   @override
@@ -46,6 +51,26 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
     _rateController.dispose();
     _vehicleController.dispose();
     super.dispose();
+  }
+
+  void _updateCalculations() {
+    if (!mounted) return;
+    final g = _parse(_grossController.text);
+    final t = _parse(_tareController.text);
+    
+    String newTrashValue = '0.00';
+    if (g > t) {
+      // Logic: 1% of (Gross - Tare), rounded down (floor) to 2 decimal places
+      final trash = ((g - t) * 0.01 * 100).floorToDouble() / 100;
+      newTrashValue = trash.toStringAsFixed(2);
+    }
+    
+    // Only update if value changed to avoid cursor reset issues if it were editable
+    if (_trashController.text != newTrashValue) {
+      _trashController.text = newTrashValue;
+    }
+    
+    setState(() {});
   }
 
   double _parse(String v) => double.tryParse(v.trim()) ?? 0.0;
@@ -72,17 +97,35 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
         maxHeight: 1024,
         imageQuality: 85,
       );
-      if (file != null) setState(() => _photo = file);
+      if (file != null) setState(() => _photos.add(file));
     } catch (e) {
       debugPrint('Camera error: $e');
     }
   }
 
-  void _useDemoPhoto() => setState(() => _photo = XFile('demo'));
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
 
   void _onSave(AppLocalizations l10n) async {
     if (!_formKey.currentState!.validate()) return;
-    if (_photo == null) {
+    if (_selectedFarmer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.selectFarmer), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    if (_photos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.capturePhotoError), backgroundColor: Colors.red),
       );
@@ -90,9 +133,29 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
     }
 
     setState(() => _isSaving = true);
-    await Future.delayed(const Duration(seconds: 1)); // Simulating save
+    
+    final newProcurement = ProcurementModel(
+      id: const Uuid().v4(),
+      sessionId: DemoCatalog.activeSessionId,
+      farmerId: _selectedFarmer!.id,
+      date: _selectedDate,
+      vehicleNumber: _vehicleController.text.trim().toUpperCase(),
+      grossWeightQtl: _parse(_grossController.text),
+      tareWeightQtl: _parse(_tareController.text),
+      trashDeductionQtl: _parse(_trashController.text),
+      netWeightQtl: _netWeight,
+      ratePerQtl: _parse(_rateController.text),
+      totalAmount: _totalAmount,
+      amountPaid: 0,
+      paymentStatus: PaymentStatus.pending,
+      hasVehiclePhoto: true,
+    );
+
+    DemoCatalog.addProcurement(newProcurement);
+
+    await Future.delayed(const Duration(milliseconds: 500)); 
     if (mounted) {
-      context.pop();
+      context.replace('/procurement/receipt/${newProcurement.id}');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.procurementSaved)),
       );
@@ -106,33 +169,63 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
-        title: Text(l10n.recordIntake.toUpperCase()),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1B3D2F)),
+          onPressed: () => context.pop(),
+        ),
+        title: Text(
+          l10n.recordIntake.toUpperCase(),
+          style: const TextStyle(
+            color: Color(0xFF365E32),
+            fontWeight: FontWeight.w900,
+            fontSize: 16,
+            letterSpacing: 1.1,
+          ),
+        ),
         centerTitle: true,
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           children: [
-            _buildSectionLabel(theme, l10n.farmerVehicle),
-            const SizedBox(height: 12),
+            _buildSectionLabel(l10n.farmerVehicle),
+            const SizedBox(height: 8),
+            _buildDatePickerCard(theme, l10n),
+            const SizedBox(height: 8),
             _buildFarmerCard(theme, scheme, l10n),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _vehicleController,
-              decoration: InputDecoration(
-                labelText: l10n.vehicleNumber,
-                prefixIcon: const Icon(Icons.local_shipping_outlined),
-                hintText: l10n.vehicleHint,
+            const SizedBox(height: 8),
+            Card(
+              elevation: 0.5,
+              color: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: TextFormField(
+                  controller: _vehicleController,
+                  decoration: InputDecoration(
+                    labelText: l10n.vehicleNumber.toUpperCase(),
+                    labelStyle: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 0.8),
+                    prefixIcon: const Icon(Icons.local_shipping_outlined, color: Color(0xFF64748B), size: 20),
+                    hintText: l10n.vehicleHint,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                  ),
+                  textCapitalization: TextCapitalization.characters,
+                  validator: (v) => (v == null || v.isEmpty) ? l10n.required : null,
+                ),
               ),
-              textCapitalization: TextCapitalization.characters,
-              validator: (v) => (v == null || v.isEmpty) ? l10n.required : null,
             ),
 
-            const SizedBox(height: 32),
-            _buildSectionLabel(theme, l10n.weightMeasurements),
-            const SizedBox(height: 12),
+            const SizedBox(height: 24),
+            _buildSectionLabel(l10n.weightMeasurements),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -154,42 +247,109 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             _buildWeightField(
               controller: _trashController,
               label: l10n.trashDeduction,
               icon: Icons.delete_outline,
               l10n: l10n,
+              isReadOnly: true,
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 14, color: Color(0xFF1B5E20)),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      "Auto-calculated at 1% of total weight (Gross - Tare).",
+                      style: TextStyle(color: Color(0xFF1B5E20), fontSize: 11, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             _buildSummaryCard(theme, scheme, l10n),
 
-            const SizedBox(height: 32),
-            _buildSectionLabel(theme, l10n.securityCapture),
-            const SizedBox(height: 12),
-            _buildPhotoPicker(theme, scheme, l10n),
+            const SizedBox(height: 24),
+            _buildSectionLabel(l10n.securityCapture),
+            const SizedBox(height: 8),
+            _buildMultiPhotoPicker(theme, scheme, l10n),
 
-            const SizedBox(height: 40),
-            FilledButton(
-              onPressed: _isSaving ? null : () => _onSave(l10n),
-              child: _isSaving
-                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : Text(l10n.confirmSaveEntry.toUpperCase()),
+            const SizedBox(height: 32),
+            SizedBox(
+              height: 56,
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _isSaving ? null : () => _onSave(l10n),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1B5E20),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 2,
+                ),
+                child: _isSaving
+                  ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+                  : Text(
+                      l10n.confirmSaveEntry.toUpperCase(),
+                      style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2),
+                    ),
+              ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 32),
           ],
+        ),
+
+      ),
+    );
+  }
+
+  Widget _buildDatePickerCard(ThemeData theme, AppLocalizations l10n) {
+    return Card(
+      elevation: 0.5,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        onTap: () => _selectDate(context),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              const Icon(Icons.calendar_today_outlined, color: Color(0xFF64748B), size: 20),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "INTAKE DATE",
+                    style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 0.8),
+                  ),
+                  Text(
+                    DateFormat('dd/MM/yyyy').format(_selectedDate),
+                    style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              const Icon(Icons.edit_outlined, color: Color(0xFF64748B), size: 16),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSectionLabel(ThemeData theme, String label) {
+  Widget _buildSectionLabel(String label) {
     return Text(
-      label,
-      style: theme.textTheme.labelLarge?.copyWith(
-        color: theme.colorScheme.primary.withValues(alpha: 0.7),
-        fontSize: 12,
+      label.toUpperCase(),
+      style: const TextStyle(
+        color: Color(0xFF64748B),
+        fontSize: 10,
+        fontWeight: FontWeight.bold,
         letterSpacing: 1.2,
       ),
     );
@@ -198,34 +358,47 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
   Widget _buildFarmerCard(ThemeData theme, ColorScheme scheme, AppLocalizations l10n) {
     return SearchAnchor(
       builder: (context, controller) {
-        return InkWell(
-          onTap: () => controller.openView(),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: scheme.outlineVariant),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: scheme.primary.withValues(alpha: 0.1),
-                  child: Icon(Icons.person_outline, color: scheme.primary),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_selectedFarmer?.name ?? l10n.selectFarmer, style: theme.textTheme.titleMedium),
-                      if (_selectedFarmer != null)
-                        Text(_selectedFarmer!.village, style: theme.textTheme.bodySmall),
-                    ],
+        return Card(
+          elevation: 0.5,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: InkWell(
+            onTap: () => controller.openView(),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF365E32),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.person_outline, color: Colors.white),
                   ),
-                ),
-                Icon(Icons.arrow_drop_down, color: scheme.primary),
-              ],
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _selectedFarmer?.name ?? l10n.selectFarmer,
+                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+                        ),
+                        if (_selectedFarmer != null)
+                          Text(
+                            _selectedFarmer!.village.toUpperCase(),
+                            style: const TextStyle(color: Color(0xFF64748B), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B)),
+                ],
+              ),
             ),
           ),
         );
@@ -251,65 +424,133 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
     required String label,
     required IconData icon,
     required AppLocalizations l10n,
+    bool isReadOnly = false,
+    String? helperText,
+    ValueChanged<String>? onChanged,
   }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))],
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 20),
-        suffixText: 'Qtl',
+    return Card(
+      elevation: 0.5,
+      color: isReadOnly ? const Color(0xFFF8FAFC) : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: controller,
+              readOnly: isReadOnly,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))],
+              decoration: InputDecoration(
+                labelText: label.toUpperCase(),
+                labelStyle: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 0.8),
+                prefixIcon: Icon(icon, size: 20, color: const Color(0xFF64748B)),
+                suffixText: 'Qtl',
+                suffixStyle: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+              ),
+              onChanged: (val) {
+                if (onChanged != null) onChanged(val);
+                setState(() {});
+              },
+              validator: (v) {
+                if (label == l10n.gross && _parse(v ?? '') <= 0) return l10n.required;
+                return null;
+              },
+            ),
+            if (helperText != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 32, bottom: 8),
+                child: Text(
+                  helperText,
+                  style: const TextStyle(color: Color(0xFF1B5E20), fontSize: 10, fontWeight: FontWeight.w500),
+                ),
+              ),
+          ],
+        ),
       ),
-      onChanged: (_) => setState(() {}),
-      validator: (v) {
-        if (label == l10n.gross && _parse(v ?? '') <= 0) return l10n.required;
-        return null;
-      },
     );
   }
 
   Widget _buildSummaryCard(ThemeData theme, ColorScheme scheme, AppLocalizations l10n) {
     final net = _netWeight;
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: scheme.primary,
-        borderRadius: BorderRadius.circular(24),
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(l10n.netWeight.toUpperCase(), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12)),
-              Text('${net.toStringAsFixed(2)} Qtl', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.netWeight.toUpperCase(),
+                    style: const TextStyle(color: Colors.white54, fontWeight: FontWeight.bold, fontSize: 9, letterSpacing: 1.2),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${net.toStringAsFixed(2)} Qtl',
+                    style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
+              const Icon(Icons.analytics_outlined, color: Colors.white24, size: 32),
             ],
           ),
-          const Divider(color: Colors.white24, height: 32),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Divider(color: Colors.white10, height: 1),
+          ),
           Row(
             children: [
               Expanded(
-                child: TextFormField(
-                  controller: _rateController,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  decoration: InputDecoration(
-                    labelText: l10n.ratePerQtl,
-                    labelStyle: const TextStyle(color: Colors.white70),
-                    prefixText: '₹ ',
-                    prefixStyle: const TextStyle(color: Colors.white),
-                    filled: false,
-                    enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                  ),
-                  onChanged: (_) => setState(() {}),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.ratePerQtl.toUpperCase(),
+                      style: const TextStyle(color: Colors.white54, fontWeight: FontWeight.bold, fontSize: 9, letterSpacing: 1.2),
+                    ),
+                    const SizedBox(height: 4),
+                    IntrinsicWidth(
+                      child: TextFormField(
+                        controller: _rateController,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          prefixText: '₹ ',
+                          prefixStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          border: InputBorder.none,
+                          filled: false,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 32),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(l10n.totalPayout.toUpperCase(), style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
-                  Text('₹${_totalAmount.toStringAsFixed(0)}', style: TextStyle(color: scheme.secondary, fontSize: 22, fontWeight: FontWeight.w900)),
+                  Text(
+                    l10n.totalPayout.toUpperCase(),
+                    style: const TextStyle(color: Colors.white54, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '₹${_totalAmount.toStringAsFixed(0)}',
+                    style: const TextStyle(color: Color(0xFFFFB300), fontSize: 22, fontWeight: FontWeight.w900),
+                  ),
                 ],
               )
             ],
@@ -319,47 +560,88 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
     );
   }
 
-  Widget _buildPhotoPicker(ThemeData theme, ColorScheme scheme, AppLocalizations l10n) {
-    return InkWell(
-      onTap: _capturePhoto,
-      child: Container(
-        height: 160,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: scheme.outlineVariant),
+  Widget _buildMultiPhotoPicker(ThemeData theme, ColorScheme scheme, AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 100,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _photos.length + 1,
+            itemBuilder: (context, index) {
+              if (index == _photos.length) {
+                return _buildAddPhotoButton(l10n);
+              }
+              final photo = _photos[index];
+              return _buildPhotoThumbnail(photo, index);
+            },
+          ),
         ),
-        child: _photo == null
-          ? Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.camera_alt_outlined, size: 40, color: scheme.primary),
-                const SizedBox(height: 8),
-                Text(l10n.captureVehicleImage, style: theme.textTheme.titleSmall),
-                Text(l10n.weightVerificationRequired, style: theme.textTheme.bodySmall),
-                if (!kIsWeb && defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS)
-                  TextButton(onPressed: _useDemoPhoto, child: const Text('Simulate Photo')),
-              ],
-            )
-          : Stack(
-              fit: StackFit.expand,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: _photo!.path == 'demo'
-                    ? Container(color: scheme.primary.withValues(alpha: 0.1), child: Icon(Icons.local_shipping, size: 64, color: scheme.primary))
-                    : Image.file(File(_photo!.path), fit: BoxFit.cover),
-                ),
-                Positioned(
-                  right: 8, top: 8,
-                  child: IconButton.filled(
-                    onPressed: () => setState(() => _photo = null),
-                    icon: const Icon(Icons.close),
-                  ),
-                ),
-              ],
+        if (_photos.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, left: 4),
+            child: Text(
+              l10n.weightVerificationRequired,
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
             ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildAddPhotoButton(AppLocalizations l10n) {
+    return Container(
+      width: 100,
+      margin: const EdgeInsets.only(right: 12),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: _capturePhoto,
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.add_a_photo_outlined, color: Color(0xFF365E32)),
+              const SizedBox(height: 4),
+              const Text("ADD PHOTO", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF365E32))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoThumbnail(XFile photo, int index) {
+    return Container(
+      width: 100,
+      margin: const EdgeInsets.only(right: 12),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: photo.path == 'demo'
+                ? Container(
+                    color: const Color(0xFFF1F5F9),
+                    child: const Icon(Icons.local_shipping, color: Color(0xFF365E32)),
+                  )
+                : Image.file(File(photo.path), fit: BoxFit.cover),
+          ),
+          Positioned(
+            right: 4,
+            top: 4,
+            child: InkWell(
+              onTap: () => setState(() => _photos.removeAt(index)),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                child: const Icon(Icons.close, size: 12, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -2,6 +2,7 @@ import '../core/domain/payment_status.dart';
 import '../features/farmer/domain/farmer.dart';
 import 'procurement_model.dart';
 import 'session_model.dart';
+import 'payment_model.dart';
 
 /// Central demo data for UI flows; replace with API/repository.
 abstract final class DemoCatalog {
@@ -152,6 +153,25 @@ abstract final class DemoCatalog {
     ),
   ];
 
+  static final List<PaymentModel> manualPayments = [
+    PaymentModel(
+      id: 'm1',
+      farmerId: 'f1',
+      sessionId: activeSessionId,
+      date: DateTime(2026, 4, 5),
+      amount: 5000,
+      note: 'Initial cash payment',
+    ),
+    PaymentModel(
+      id: 'm2',
+      farmerId: 'f2',
+      sessionId: activeSessionId,
+      date: DateTime(2026, 4, 6),
+      amount: 2000,
+      note: 'Bank transfer',
+    ),
+  ];
+
   static SessionModel? activeSession() {
     for (final s in sessions) {
       if (s.isActive) return s;
@@ -177,6 +197,24 @@ abstract final class DemoCatalog {
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
+  static List<PaymentModel> paymentsForFarmer(String farmerId, {String? sessionId}) {
+    final sid = sessionId ?? activeSessionId;
+    return manualPayments.where((p) => p.farmerId == farmerId && p.sessionId == sid).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  static void addPayment(PaymentModel payment) {
+    manualPayments.add(payment);
+  }
+
+  static void addProcurement(ProcurementModel procurement) {
+    procurements.add(procurement);
+  }
+
+  static void deletePayment(String paymentId) {
+    manualPayments.removeWhere((p) => p.id == paymentId);
+  }
+
   /// Last N procurement rows for dashboard feed (active session).
   static List<ProcurementModel> recentProcurements({int n = 5}) {
     final list = procurementsForSession(activeSessionId);
@@ -193,13 +231,21 @@ abstract final class DemoCatalog {
 
   static (double due, double paid) financialTotalsForSession(String sessionId) {
     final list = procurementsForSession(sessionId);
-    var due = 0.0;
-    var paid = 0.0;
+    final pList = manualPayments.where((p) => p.sessionId == sessionId);
+
+    var totalDue = 0.0;
+    var totalPaid = 0.0;
+
     for (final p in list) {
-      due += p.totalAmount;
-      paid += p.amountPaid;
+      totalDue += p.totalAmount;
+      totalPaid += p.amountPaid;
     }
-    return (due, paid);
+
+    for (final pm in pList) {
+      totalPaid += pm.amount;
+    }
+
+    return (totalDue, totalPaid);
   }
 
   /// Demo 7-day intake (quintals) ending today — static preview for chart.

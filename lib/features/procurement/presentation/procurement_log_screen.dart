@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:gur_bhatti_manager/l10n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/widgets/payment_status_chip.dart';
 import '../../../data/demo_catalog.dart';
 import '../../../data/procurement_model.dart';
 
@@ -32,59 +31,122 @@ class _ProcurementLogScreenState extends State<ProcurementLogScreen> {
 
     final totalWeight = filteredList.fold(0.0, (sum, p) => sum + p.netWeightQtl);
     final totalAmount = filteredList.fold(0.0, (sum, p) => sum + p.totalAmount);
+    final totalTrolleys = filteredList.length;
 
     return Scaffold(
-      backgroundColor: scheme.surface,
+      backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
-        title: Text(l10n.procurementLog.toUpperCase()),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: Column(
+          children: [
+            Text(
+              l10n.procurementLog.toUpperCase(),
+              style: const TextStyle(
+                color: Color(0xFF365E32),
+                fontWeight: FontWeight.w900,
+                fontSize: 16,
+                letterSpacing: 1.1,
+              ),
+            ),
+            Text(
+              'ACTIVE SESSION: ${DemoCatalog.activeSession()?.name ?? 'N/A'}',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
         centerTitle: true,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(100),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.push('/procurement/add'),
+        backgroundColor: const Color(0xFF1B5E20),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: const Icon(Icons.add_task_rounded, color: Colors.white),
+      ),
+      body: Column(
+        children: [
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
             child: Column(
               children: [
-                _buildQuickStats(theme, scheme, totalWeight, totalAmount, l10n),
-                const SizedBox(height: 12),
-                TextField(
-                  onChanged: (v) => setState(() => _searchQuery = v),
-                  decoration: InputDecoration(
-                    hintText: l10n.searchFarmerVehicle,
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                    fillColor: scheme.onPrimary.withValues(alpha: 0.1),
+                _buildQuickStats(theme, scheme, totalWeight, totalAmount, totalTrolleys, l10n),
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                    decoration: InputDecoration(
+                      hintText: l10n.searchFarmerVehicle,
+                      hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
+                      prefixIcon: const Icon(Icons.search, size: 20, color: Color(0xFF64748B)),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/procurement/add'),
-        icon: const Icon(Icons.add_task_rounded),
-        label: Text(l10n.newEntry.toUpperCase()),
-      ),
-      body: Scrollbar(
-        thumbVisibility: true,
-        child: ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: filteredList.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 12),
-          itemBuilder: (context, index) => _ProcurementCard(procurement: filteredList[index]),
-        ),
+          Expanded(
+            child: Scrollbar(
+              thumbVisibility: true,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(20),
+                itemCount: filteredList.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 16),
+                itemBuilder: (context, index) => _ProcurementCard(procurement: filteredList[index]),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildQuickStats(ThemeData theme, ColorScheme scheme, double weight, double amount, AppLocalizations l10n) {
-    return Row(
-      children: [
-        _StatItem(label: l10n.totalWeight.toUpperCase(), value: '${weight.toStringAsFixed(1)} Qtl'),
-        const SizedBox(width: 16),
-        _StatItem(label: l10n.totalValue.toUpperCase(), value: '₹${(amount / 1000).toStringAsFixed(1)}k'),
-      ],
+  Widget _buildQuickStats(ThemeData theme, ColorScheme scheme, double weight, double amount, int trolleys, AppLocalizations l10n) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _StatItem(label: 'TROLLEYS', value: trolleys.toString()),
+          _VerticalDivider(),
+          _StatItem(label: l10n.totalWeight.toUpperCase(), value: '${weight.toStringAsFixed(1)} Qtl'),
+          _VerticalDivider(),
+          _StatItem(label: l10n.totalValue.toUpperCase(), value: '₹${(amount / 1000).toStringAsFixed(1)}k'),
+        ],
+      ),
     );
+  }
+}
+
+class _VerticalDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(width: 1, height: 24, color: Colors.white10);
   }
 }
 
@@ -96,19 +158,28 @@ class _StatItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-            Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white54,
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -126,50 +197,98 @@ class _ProcurementCard extends StatelessWidget {
     final farmer = DemoCatalog.farmerById(procurement.farmerId);
 
     return Card(
-      elevation: 0,
+      elevation: 0.5,
+      color: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: scheme.outlineVariant, width: 1),
+        borderRadius: BorderRadius.circular(24),
       ),
       child: InkWell(
         onTap: () {
-          if (farmer != null) context.push('/farmers/${farmer.id}');
+          context.push('/procurement/receipt/${procurement.id}');
         },
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           child: Column(
             children: [
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: scheme.primary.withValues(alpha: 0.05),
-                    child: Icon(Icons.person_outline, color: scheme.primary, size: 20),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF365E32),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      _getInitials(farmer?.name ?? '?'),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           farmer?.name ?? l10n.unknownFarmer,
-                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1E293B),
+                          ),
                         ),
-                        Text(
-                          '${procurement.vehicleNumber} • ${procurement.date.day}/${procurement.date.month}',
-                          style: theme.textTheme.bodySmall?.copyWith(color: scheme.outline),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.local_shipping_outlined, size: 14, color: Color(0xFF64748B)),
+                            const SizedBox(width: 4),
+                            Text(
+                              procurement.vehicleNumber,
+                              style: const TextStyle(
+                                color: Color(0xFF64748B),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  PaymentStatusChip(status: procurement.paymentStatus),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Text(
+                        'DATE',
+                        style: TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${procurement.date.day.toString().padLeft(2, '0')}/${procurement.date.month.toString().padLeft(2, '0')}/${procurement.date.year.toString().substring(2)}',
+                        style: const TextStyle(
+                          color: Color(0xFF1E293B),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Divider(height: 1),
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Divider(height: 1, color: Color(0xFFF1F5F9)),
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -177,15 +296,47 @@ class _ProcurementCard extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(l10n.netWeight.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(color: scheme.outline, fontWeight: FontWeight.bold)),
-                      Text('${procurement.netWeightQtl.toStringAsFixed(2)} Qtl', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900, color: scheme.primary)),
+                      const Text(
+                        'NET WEIGHT',
+                        style: TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${procurement.netWeightQtl.toStringAsFixed(2)} Qtl',
+                        style: const TextStyle(
+                          color: Color(0xFF1B5E20),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                     ],
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(l10n.totalAmount.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(color: scheme.outline, fontWeight: FontWeight.bold)),
-                      Text('₹${procurement.totalAmount.toStringAsFixed(0)}', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                      const Text(
+                        'TOTAL AMOUNT',
+                        style: TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '₹${procurement.totalAmount.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          color: Color(0xFF1E293B),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -195,5 +346,14 @@ class _ProcurementCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return '?';
+    final parts = name.trim().split(' ');
+    if (parts.length > 1) {
+      return '${parts[0][0]}${parts[parts.length - 1][0]}'.toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
   }
 }

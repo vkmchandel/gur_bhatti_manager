@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../features/farmer/presentation/add_payment_screen.dart';
 import '../../features/farmer/presentation/farmer_ledger_screen.dart';
 import '../../features/farmer/presentation/farmer_screen.dart';
 import '../../features/farmer/presentation/register_farmer_screen.dart';
 import '../../features/procurement/presentation/add_procurement_screen.dart';
 import '../../features/procurement/presentation/procurement_log_screen.dart';
+import '../../features/procurement/presentation/procurement_receipt_screen.dart';
 import '../../features/session/presentation/session_management_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../widgets/app_shell_scaffold.dart';
@@ -18,6 +20,15 @@ abstract final class AppRouter {
     navigatorKey: rootNavigatorKey,
     initialLocation: '/home',
     routes: [
+      GoRoute(
+        path: '/procurement/receipt/:procurementId',
+        name: 'procurement-receipt',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['procurementId']!;
+          return ProcurementReceiptScreen(procurementId: id);
+        },
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return AppShellScaffold(navigationShell: navigationShell);
@@ -62,6 +73,14 @@ abstract final class AppRouter {
                         builder: (context, state) {
                           final id = state.pathParameters['farmerId']!;
                           return RegisterFarmerScreen(farmerId: id);
+                        },
+                      ),
+                      GoRoute(
+                        path: 'payment',
+                        name: 'farmers-payment',
+                        builder: (context, state) {
+                          final id = state.pathParameters['farmerId']!;
+                          return AddPaymentScreen(farmerId: id);
                         },
                       ),
                     ],
