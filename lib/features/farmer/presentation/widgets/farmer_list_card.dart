@@ -22,22 +22,10 @@ class FarmerListCard extends StatelessWidget {
     return parts[0][0].toUpperCase();
   }
 
-  Color _getAvatarColor(String name, ColorScheme scheme) {
-    final colors = [
-      scheme.primary,
-      scheme.secondary,
-      const Color(0xFF0F172A), // Slate 900
-    ];
-    // Simple hash to consistently pick a color for the same name
-    final index = name.length % colors.length;
-    return colors[index];
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final avatarColor = _getAvatarColor(farmer.name, scheme);
 
     return Card(
       elevation: 0.5,
@@ -52,16 +40,20 @@ class FarmerListCard extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: avatarColor.withValues(alpha: 0.1),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF365E32),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
                 child: Text(
                   _getInitials(farmer.name),
-                  style: TextStyle(
-                    color: avatarColor,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                    letterSpacing: -0.5,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),

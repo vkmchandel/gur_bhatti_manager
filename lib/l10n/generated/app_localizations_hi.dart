@@ -321,4 +321,31 @@ class AppLocalizationsHi extends AppLocalizations {
   String sessionUpdated(Object name) {
     return 'सक्रिय सत्र बदलकर $name कर दिया गया है';
   }
+
+  @override
+  String get intakeReceipt => 'आवक रसीद';
+
+  @override
+  String get date => 'दिनांक';
+
+  @override
+  String get receiptNo => 'रसीद नं.';
+
+  @override
+  String get trash => 'कचरा';
+
+  @override
+  String get authorizedSignatory => 'अधिकृत हस्ताक्षरकर्ता';
+
+  @override
+  String get shareReceipt => 'रसीद साझा करें';
+
+  @override
+  String get thankYouBusiness => 'हमारे साथ व्यापार करने के लिए धन्यवाद!';
+
+  @override
+  String get edit => 'बदलें';
+
+  @override
+  String get share => 'साझा करें';
 }

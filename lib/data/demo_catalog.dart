@@ -211,6 +211,13 @@ abstract final class DemoCatalog {
     procurements.add(procurement);
   }
 
+  static void updateProcurement(ProcurementModel procurement) {
+    final index = procurements.indexWhere((p) => p.id == procurement.id);
+    if (index != -1) {
+      procurements[index] = procurement;
+    }
+  }
+
   static void deletePayment(String paymentId) {
     manualPayments.removeWhere((p) => p.id == paymentId);
   }

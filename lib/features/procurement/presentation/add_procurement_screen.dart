@@ -15,7 +15,12 @@ import '../../../data/procurement_model.dart';
 import '../../../features/farmer/domain/farmer.dart';
 
 class AddProcurementScreen extends StatefulWidget {
-  const AddProcurementScreen({super.key});
+  final String? editProcurementId;
+
+  const AddProcurementScreen({
+    super.key,
+    this.editProcurementId,
+  });
 
   @override
   State<AddProcurementScreen> createState() => _AddProcurementScreenState();
@@ -41,6 +46,20 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
     _grossController.addListener(_updateCalculations);
     _tareController.addListener(_updateCalculations);
     _rateController.addListener(() => setState(() {}));
+
+    if (widget.editProcurementId != null) {
+      final p = DemoCatalog.procurements.firstWhere((p) => p.id == widget.editProcurementId);
+      _selectedFarmer = DemoCatalog.farmerById(p.farmerId);
+      _grossController.text = p.grossWeightQtl.toString();
+      _tareController.text = p.tareWeightQtl.toString();
+      _trashController.text = p.trashDeductionQtl.toString();
+      _rateController.text = p.ratePerQtl.toString();
+      _vehicleController.text = p.vehicleNumber;
+      _selectedDate = p.date;
+      if (p.hasVehiclePhoto) {
+        _photos.add(XFile('demo')); // Placeholder for existing photo
+      }
+    }
   }
 
   @override
@@ -134,8 +153,8 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
 
     setState(() => _isSaving = true);
     
-    final newProcurement = ProcurementModel(
-      id: const Uuid().v4(),
+    final procurement = ProcurementModel(
+      id: widget.editProcurementId ?? const Uuid().v4(),
       sessionId: DemoCatalog.activeSessionId,
       farmerId: _selectedFarmer!.id,
       date: _selectedDate,
@@ -151,14 +170,25 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
       hasVehiclePhoto: true,
     );
 
-    DemoCatalog.addProcurement(newProcurement);
+    if (widget.editProcurementId != null) {
+      DemoCatalog.updateProcurement(procurement);
+    } else {
+      DemoCatalog.addProcurement(procurement);
+    }
 
     await Future.delayed(const Duration(milliseconds: 500)); 
     if (mounted) {
-      context.replace('/procurement/receipt/${newProcurement.id}');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.procurementSaved)),
-      );
+      if (widget.editProcurementId != null) {
+        context.pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Entry updated successfully")),
+        );
+      } else {
+        context.replace('/procurement/receipt/${procurement.id}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.procurementSaved)),
+        );
+      }
     }
   }
 
@@ -179,7 +209,7 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
           onPressed: () => context.pop(),
         ),
         title: Text(
-          l10n.recordIntake.toUpperCase(),
+          (widget.editProcurementId != null ? "Edit Entry" : l10n.recordIntake).toUpperCase(),
           style: const TextStyle(
             color: Color(0xFF365E32),
             fontWeight: FontWeight.w900,
@@ -294,7 +324,7 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
                 child: _isSaving
                   ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
                   : Text(
-                      l10n.confirmSaveEntry.toUpperCase(),
+                      (widget.editProcurementId != null ? "Update Entry" : l10n.confirmSaveEntry).toUpperCase(),
                       style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2),
                     ),
               ),

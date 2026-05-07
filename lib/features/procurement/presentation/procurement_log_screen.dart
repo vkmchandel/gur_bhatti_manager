@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:gur_bhatti_manager/l10n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
@@ -18,7 +19,6 @@ class _ProcurementLogScreenState extends State<ProcurementLogScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final l10n = AppLocalizations.of(context)!;
 
     final allProcurements = DemoCatalog.procurementsForSession(DemoCatalog.activeSessionId);
@@ -76,7 +76,7 @@ class _ProcurementLogScreenState extends State<ProcurementLogScreen> {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
             child: Column(
               children: [
-                _buildQuickStats(theme, scheme, totalWeight, totalAmount, totalTrolleys, l10n),
+                _buildQuickStats(theme, totalWeight, totalAmount, totalTrolleys, l10n),
                 const SizedBox(height: 16),
                 Container(
                   decoration: BoxDecoration(
@@ -84,7 +84,7 @@ class _ProcurementLogScreenState extends State<ProcurementLogScreen> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -122,7 +122,7 @@ class _ProcurementLogScreenState extends State<ProcurementLogScreen> {
     );
   }
 
-  Widget _buildQuickStats(ThemeData theme, ColorScheme scheme, double weight, double amount, int trolleys, AppLocalizations l10n) {
+  Widget _buildQuickStats(ThemeData theme, double weight, double amount, int trolleys, AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -192,9 +192,14 @@ class _ProcurementCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final farmer = DemoCatalog.farmerById(procurement.farmerId);
+
+    final currencyFormatter = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹',
+      decimalDigits: 0,
+    );
 
     return Card(
       elevation: 0.5,
@@ -311,7 +316,7 @@ class _ProcurementCard extends StatelessWidget {
                         style: const TextStyle(
                           color: Color(0xFF1B5E20),
                           fontSize: 18,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
@@ -320,7 +325,7 @@ class _ProcurementCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       const Text(
-                        'TOTAL AMOUNT',
+                        'TOTAL VALUE',
                         style: TextStyle(
                           color: Color(0xFF64748B),
                           fontSize: 9,
@@ -330,10 +335,10 @@ class _ProcurementCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '₹${procurement.totalAmount.toStringAsFixed(0)}',
+                        currencyFormatter.format(procurement.totalAmount),
                         style: const TextStyle(
                           color: Color(0xFF1E293B),
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),

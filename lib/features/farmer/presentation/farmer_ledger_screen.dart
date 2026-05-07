@@ -67,10 +67,8 @@ class _FarmerLedgerScreenState extends State<FarmerLedgerScreen> {
       totalManualPaid += p.amount;
     }
 
-    final totalPaid = totalPaidAtSupply + totalManualPaid;
+    final totalPaid = totalManualPaid;
     final balance = totalAmt - totalPaid;
-
-    final sortedProcurements = [...procurements]..sort((a, b) => b.date.compareTo(a.date));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -88,7 +86,7 @@ class _FarmerLedgerScreenState extends State<FarmerLedgerScreen> {
               'FARMER PROFILE',
               style: TextStyle(
                 color: Color(0xFF365E32),
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.bold,
                 fontSize: 16,
                 letterSpacing: 1.1,
               ),
@@ -135,32 +133,6 @@ class _FarmerLedgerScreenState extends State<FarmerLedgerScreen> {
             _buildIdentitySection(context, farmer, theme, scheme),
             const SizedBox(height: 24),
             _buildFinancialSummary(totalWt, procurements.length, totalAmt, totalPaid, balance),
-            const SizedBox(height: 32),
-            Row(
-              children: [
-                Text(
-                  'RECENT DELIVERIES',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: const Color(0xFF1B5E20),
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(child: Divider(thickness: 1, color: Color(0xFFE2E8F0))),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (sortedProcurements.isEmpty)
-              _buildEmptyDeliveryState(theme, scheme)
-            else
-              ...sortedProcurements.take(3).map((p) => _DeliveryItem(
-                    date: p.date,
-                    weight: p.netWeightQtl,
-                    amount: p.totalAmount,
-                    onTap: () => context.push('/procurement/receipt/${p.id}'),
-                  )),
             const SizedBox(height: 32),
             Row(
               children: [
@@ -421,6 +393,7 @@ class _FarmerLedgerScreenState extends State<FarmerLedgerScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 valueColor: const Color(0xFFFFB300),
                 valueSize: 22,
+                isBold: true,
               ),
             ],
           ),
@@ -433,6 +406,7 @@ class _FarmerLedgerScreenState extends State<FarmerLedgerScreen> {
     CrossAxisAlignment crossAxisAlignment = CrossAxisAlignment.start,
     Color valueColor = Colors.white,
     double valueSize = 20,
+    bool isBold = false,
   }) {
     return Column(
       crossAxisAlignment: crossAxisAlignment,
@@ -452,7 +426,7 @@ class _FarmerLedgerScreenState extends State<FarmerLedgerScreen> {
           style: TextStyle(
             color: valueColor,
             fontSize: valueSize,
-            fontWeight: FontWeight.bold,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
           ),
         ),
       ],
@@ -471,63 +445,6 @@ class _FarmerLedgerScreenState extends State<FarmerLedgerScreen> {
           Icon(Icons.payments_outlined, size: 48, color: scheme.outline),
           const SizedBox(height: 16),
           Text("No payments recorded yet.", style: theme.textTheme.bodySmall?.copyWith(color: scheme.outline)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyDeliveryState(ThemeData theme, ColorScheme scheme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      child: Text("No deliveries recorded yet.", style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
-    );
-  }
-}
-
-class _DeliveryItem extends StatelessWidget {
-  final DateTime date;
-  final double weight;
-  final double amount;
-  final VoidCallback onTap;
-
-  const _DeliveryItem({
-    required this.date,
-    required this.weight,
-    required this.amount,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-            child: Row(
-              children: [
-                Text(
-                  '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year.toString().substring(2)}',
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(width: 24),
-                Text(
-                  '${weight.toStringAsFixed(2)} Qtl',
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold, color: const Color(0xFF1B5E20)),
-                ),
-                const Spacer(),
-                Text(
-                  '₹${amount.toStringAsFixed(0)}',
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-              ],
-            ),
-          ),
-          const Divider(height: 1, thickness: 0.5),
         ],
       ),
     );

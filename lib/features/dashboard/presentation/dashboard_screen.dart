@@ -94,7 +94,11 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '${weight.toStringAsFixed(1)} Qtl',
-            style: theme.textTheme.headlineLarge?.copyWith(color: Colors.white, fontSize: 36),
+            style: theme.textTheme.headlineLarge?.copyWith(
+              color: Colors.white,
+              fontSize: 36,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const Divider(color: Colors.white24, height: 32),
           Row(
@@ -251,8 +255,19 @@ class _ProcurementCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(farmer?.name ?? 'Unknown', style: theme.textTheme.titleMedium),
-                Text('${procurement.vehicleNumber} • ${procurement.netWeightQtl} Qtl', style: theme.textTheme.bodySmall),
+                Text(farmer?.name ?? 'Unknown', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: '${procurement.vehicleNumber} • '),
+                      TextSpan(
+                        text: '${procurement.netWeightQtl} Qtl',
+                        style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1B5E20)),
+                      ),
+                    ],
+                  ),
+                  style: theme.textTheme.bodySmall,
+                ),
               ],
             ),
           ),

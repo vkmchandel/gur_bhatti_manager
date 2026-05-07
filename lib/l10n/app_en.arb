@@ -102,5 +102,14 @@
   "switchSessionDesc": "Do you want to make {name} the active operational session? This will change the context for all reports and entries.",
   "cancel": "CANCEL",
   "activateSession": "ACTIVATE SESSION",
-  "sessionUpdated": "ACTIVE SESSION UPDATED TO {name}"
+  "sessionUpdated": "ACTIVE SESSION UPDATED TO {name}",
+  "intakeReceipt": "INTAKE RECEIPT",
+  "date": "DATE",
+  "receiptNo": "RECEIPT #",
+  "trash": "TRASH",
+  "authorizedSignatory": "AUTHORIZED SIGNATORY",
+  "shareReceipt": "SHARE RECEIPT",
+  "thankYouBusiness": "Thank you for your business!",
+  "edit": "Edit",
+  "share": "Share"
 }

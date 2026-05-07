@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../data/demo_catalog.dart';
 import '../../../data/procurement_model.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import 'add_procurement_screen.dart';
 
 class ProcurementReceiptScreen extends StatelessWidget {
   final String procurementId;
@@ -30,6 +31,16 @@ class ProcurementReceiptScreen extends StatelessWidget {
           onPressed: () => context.pop(),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => AddProcurementScreen(editProcurementId: procurementId),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.share_outlined),
             onPressed: () {
@@ -71,9 +82,9 @@ class ProcurementReceiptScreen extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      const Text(
-                        "INTAKE RECEIPT",
-                        style: TextStyle(
+                      Text(
+                        l10n.intakeReceipt.toUpperCase(),
+                        style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -107,8 +118,8 @@ class ProcurementReceiptScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildInfoColumn("DATE", DateFormat('dd MMM yyyy, hh:mm a').format(procurement.date)),
-                          _buildInfoColumn("RECEIPT #", (procurement.id.length > 8 ? procurement.id.substring(0, 8) : procurement.id).toUpperCase()),
+                          _buildInfoColumn(l10n.date, DateFormat('dd MMM yyyy, hh:mm a').format(procurement.date)),
+                          _buildInfoColumn(l10n.receiptNo, (procurement.id.length > 8 ? procurement.id.substring(0, 8) : procurement.id).toUpperCase()),
                         ],
                       ),
                       const Divider(height: 32),
@@ -119,33 +130,14 @@ class ProcurementReceiptScreen extends StatelessWidget {
                       
                       _buildWeightRow(l10n.gross, procurement.grossWeightQtl),
                       _buildWeightRow(l10n.tare, procurement.tareWeightQtl),
-                      _buildWeightRow("TRASH", procurement.trashDeductionQtl, isNegative: true),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: _buildWeightRow(l10n.netWeight, procurement.netWeightQtl, isBold: true),
-                      ),
-                      const Divider(height: 32),
-                      _buildInfoRow("RATE / QTL", "₹${procurement.ratePerQtl.toStringAsFixed(2)}"),
+                      _buildWeightRow(l10n.trash.toUpperCase(), procurement.trashDeductionQtl, isNegative: true),
                       const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            "TOTAL AMOUNT",
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
-                          ),
-                          Text(
-                            "₹${procurement.totalAmount.toStringAsFixed(2)}",
-                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF1B5E20)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 40),
+                      _buildWeightRow(l10n.netWeight, procurement.netWeightQtl, isBold: true, fontSize: 16),
+                      const Divider(height: 24),
+                      _buildCurrencyRow(l10n.ratePerQtl, procurement.ratePerQtl),
+                      const SizedBox(height: 8),
+                      _buildCurrencyRow(l10n.totalAmount.toUpperCase(), procurement.totalAmount, isBold: true, fontSize: 16),
+                      const Divider(height: 32),
                       Center(
                         child: Column(
                           children: [
@@ -155,18 +147,18 @@ class ProcurementReceiptScreen extends StatelessWidget {
                               color: Colors.black26,
                             ),
                             const SizedBox(height: 8),
-                            const Text(
-                              "AUTHORIZED SIGNATORY",
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
+                            Text(
+                              l10n.authorizedSignatory.toUpperCase(),
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 24),
-                      const Center(
+                      Center(
                         child: Text(
-                          "Thank you for your business!",
-                          style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.black45),
+                          l10n.thankYouBusiness,
+                          style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.black45),
                         ),
                       ),
                     ],
@@ -183,11 +175,11 @@ class ProcurementReceiptScreen extends StatelessWidget {
         child: ElevatedButton.icon(
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Connecting to Bluetooth printer...")),
+              const SnackBar(content: Text("Sharing receipt PDF...")),
             );
           },
-          icon: const Icon(Icons.print),
-          label: const Text("PRINT RECEIPT"),
+          icon: const Icon(Icons.share_outlined),
+          label: Text(l10n.shareReceipt.toUpperCase()),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0F172A),
             foregroundColor: Colors.white,
@@ -223,19 +215,59 @@ class ProcurementReceiptScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildWeightRow(String label, double value, {bool isNegative = false, bool isBold = false}) {
+  Widget _buildWeightRow(String label, double value, {bool isNegative = false, bool isBold = false, double fontSize = 14}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 13, color: const Color(0xFF1E293B), fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: fontSize,
+              color: const Color(0xFF1E293B),
+              fontWeight: isBold ? FontWeight.w900 : FontWeight.w500,
+            ),
+          ),
           Text(
             "${isNegative ? '-' : ''}${value.toStringAsFixed(2)} Qtl",
             style: TextStyle(
-              fontSize: 13,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+              fontSize: fontSize,
+              fontWeight: isBold ? FontWeight.w900 : FontWeight.w700,
               color: isNegative ? Colors.red : const Color(0xFF1E293B),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCurrencyRow(String label, double value, {bool isBold = false, double fontSize = 14, Color color = const Color(0xFF1E293B)}) {
+    final formatter = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: '₹',
+      decimalDigits: value % 1 == 0 ? 0 : 2,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: fontSize,
+              color: color,
+              fontWeight: isBold ? FontWeight.w900 : FontWeight.w500,
+            ),
+          ),
+          Text(
+            formatter.format(value),
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: isBold ? FontWeight.w900 : FontWeight.w700,
+              color: color,
             ),
           ),
         ],

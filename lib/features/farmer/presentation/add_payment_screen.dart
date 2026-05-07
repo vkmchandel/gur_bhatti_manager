@@ -105,8 +105,7 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
     final payments = DemoCatalog.paymentsForFarmer(widget.farmerId);
     
     double totalDue = procurements.fold(0.0, (sum, p) => sum + p.totalAmount);
-    double totalPaid = procurements.fold(0.0, (sum, p) => sum + p.amountPaid) + 
-                       payments.fold(0.0, (sum, p) => sum + p.amount);
+    double totalPaid = payments.fold(0.0, (sum, p) => sum + p.amount);
     
     double currentBalance = totalDue - totalPaid;
     if (_editingPayment != null) {
@@ -127,7 +126,7 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
           _editingPayment != null ? 'EDIT PAYMENT' : 'RECORD PAYMENT',
           style: const TextStyle(
             color: Color(0xFF365E32),
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.bold,
             fontSize: 16,
             letterSpacing: 1.1,
           ),
@@ -167,7 +166,7 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
                     ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
                     : Text(
                         _editingPayment != null ? 'UPDATE PAYMENT' : 'CONFIRM PAYMENT',
-                        style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2),
+                        style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
                       ),
               ),
             ),
@@ -251,7 +250,7 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
               const SizedBox(height: 4),
               Text(
                 '₹${balance.toStringAsFixed(0)}',
-                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
               ),
             ],
           ),

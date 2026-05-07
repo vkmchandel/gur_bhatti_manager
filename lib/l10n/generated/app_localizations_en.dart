@@ -322,4 +322,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String sessionUpdated(Object name) {
     return 'ACTIVE SESSION UPDATED TO $name';
   }
+
+  @override
+  String get intakeReceipt => 'INTAKE RECEIPT';
+
+  @override
+  String get date => 'DATE';
+
+  @override
+  String get receiptNo => 'RECEIPT #';
+
+  @override
+  String get trash => 'TRASH';
+
+  @override
+  String get authorizedSignatory => 'AUTHORIZED SIGNATORY';
+
+  @override
+  String get shareReceipt => 'SHARE RECEIPT';
+
+  @override
+  String get thankYouBusiness => 'Thank you for your business!';
+
+  @override
+  String get edit => 'Edit';
+
+  @override
+  String get share => 'Share';
 }

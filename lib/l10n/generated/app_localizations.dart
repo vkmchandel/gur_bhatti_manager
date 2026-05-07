@@ -715,6 +715,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ACTIVE SESSION UPDATED TO {name}'**
   String sessionUpdated(Object name);
+
+  /// No description provided for @intakeReceipt.
+  ///
+  /// In en, this message translates to:
+  /// **'INTAKE RECEIPT'**
+  String get intakeReceipt;
+
+  /// No description provided for @date.
+  ///
+  /// In en, this message translates to:
+  /// **'DATE'**
+  String get date;
+
+  /// No description provided for @receiptNo.
+  ///
+  /// In en, this message translates to:
+  /// **'RECEIPT #'**
+  String get receiptNo;
+
+  /// No description provided for @trash.
+  ///
+  /// In en, this message translates to:
+  /// **'TRASH'**
+  String get trash;
+
+  /// No description provided for @authorizedSignatory.
+  ///
+  /// In en, this message translates to:
+  /// **'AUTHORIZED SIGNATORY'**
+  String get authorizedSignatory;
+
+  /// No description provided for @shareReceipt.
+  ///
+  /// In en, this message translates to:
+  /// **'SHARE RECEIPT'**
+  String get shareReceipt;
+
+  /// No description provided for @thankYouBusiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank you for your business!'**
+  String get thankYouBusiness;
+
+  /// No description provided for @edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get edit;
+
+  /// No description provided for @share.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get share;
 }
 
 class _AppLocalizationsDelegate
