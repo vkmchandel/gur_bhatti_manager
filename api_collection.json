@@ -1,0 +1,131 @@
+[
+  {
+    "name": "Send OTP",
+    "url": "/api/v1/auth/send-otp/",
+    "method": "POST",
+    "headers": {},
+    "request_body": {
+      "mobile_number": "9876543210"
+    },
+    "response_body": {
+      "status": "success",
+      "data": {
+        "message": "OTP sent successfully"
+      }
+    }
+  },
+  {
+    "name": "Verify OTP",
+    "url": "/api/v1/auth/verify-otp/",
+    "method": "POST",
+    "headers": {},
+    "request_body": {
+      "mobile_number": "9876543210",
+      "otp": "123456"
+    },
+    "response_body": {
+      "status": "success",
+      "data": {
+        "access": "jwt_access_token_string",
+        "refresh": "jwt_refresh_token_string",
+        "is_new_user": true,
+        "user": {
+          "mobile_number": "9876543210",
+          "role": "OWNER"
+        }
+      }
+    }
+  },
+  {
+    "name": "Setup Plant",
+    "url": "/api/v1/plants/",
+    "method": "POST",
+    "headers": {
+      "Authorization": "Bearer <access_token>"
+    },
+    "request_body": {
+      "owner_name": "Gurmeet Singh",
+      "name": "Singh Gur Udyog",
+      "state": "Madhya Pradesh",
+      "district": "Chhindwara",
+      "mobile_number": "9876543210",
+      "pincode": "480106",
+      "village": "Chourai",
+      "latitude": 22.0514,
+      "longitude": 79.2451,
+      "default_rate": 340.0
+    },
+    "response_body": {
+      "status": "success",
+      "data": {
+        "id": 1,
+        "name": "Singh Gur Udyog",
+        "owner_name": "Gurmeet Singh",
+        "mobile_number": "9876543210"
+      }
+    }
+  },
+  {
+    "name": "Get Plant Profile",
+    "url": "/api/v1/plants/profile/",
+    "method": "GET",
+    "headers": {
+      "Authorization": "Bearer <access_token>"
+    },
+    "request_body": null,
+    "response_body": {
+      "status": "success",
+      "data": {
+        "id": 1,
+        "name": "Singh Gur Udyog",
+        "owner_name": "Gurmeet Singh"
+      }
+    }
+  },
+  {
+    "name": "Register Farmer",
+    "url": "/api/v1/farmers/",
+    "method": "POST",
+    "headers": {
+      "Authorization": "Bearer <access_token>"
+    },
+    "request_body": {
+      "name": "Rajesh Kumar",
+      "village": "Amarwara",
+      "mobile_number": "9123456789",
+      "bank_name": "SBI",
+      "bank_account": "3214569870",
+      "ifsc_code": "SBIN0001234"
+    },
+    "response_body": {
+      "status": "success",
+      "data": {
+        "id": 1,
+        "name": "Rajesh Kumar",
+        "mobile_number": "9123456789"
+      }
+    }
+  },
+  {
+    "name": "List Farmers",
+    "url": "/api/v1/farmers/",
+    "method": "GET",
+    "headers": {
+      "Authorization": "Bearer <access_token>"
+    },
+    "request_body": null,
+    "response_body": {
+      "status": "success",
+      "data": {
+        "count": 1,
+        "results": [
+          {
+            "id": 1,
+            "name": "Rajesh Kumar",
+            "mobile_number": "9123456789"
+          }
+        ]
+      }
+    }
+  }
+]

@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:gur_bhatti_manager/l10n/generated/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/locale_provider.dart';
-import '../data/auth_provider.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -26,7 +25,6 @@ class _SignupScreenState extends State<SignupScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final localeProvider = Provider.of<LocaleProvider>(context);
-    final authProvider = context.watch<AuthProvider>();
     final theme = Theme.of(context);
 
     return Scaffold(

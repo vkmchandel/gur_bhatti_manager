@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gur_bhatti_manager/l10n/generated/app_localizations.dart';
 
-import '../../../data/session_model.dart';
+import '../domain/models/session_model.dart';
 
 class SessionManagementScreen extends StatefulWidget {
   const SessionManagementScreen({super.key});

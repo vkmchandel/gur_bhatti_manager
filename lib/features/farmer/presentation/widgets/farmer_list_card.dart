@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/phone_launcher.dart';
-import '../../domain/farmer.dart';
+import '../../domain/models/farmer_model.dart';
 
 class FarmerListCard extends StatelessWidget {
   const FarmerListCard({
@@ -10,7 +10,7 @@ class FarmerListCard extends StatelessWidget {
     this.onOpenDetail,
   });
 
-  final Farmer farmer;
+  final FarmerModel farmer;
   final VoidCallback? onOpenDetail;
 
   String _getInitials(String name) {

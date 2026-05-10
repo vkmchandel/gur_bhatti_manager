@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:gur_bhatti_manager/l10n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../data/demo_catalog.dart';
-import '../../../data/procurement_model.dart';
+import '../../session/data/session_provider.dart';
+import '../../farmer/data/farmer_provider.dart';
+import '../data/procurement_provider.dart';
+import '../domain/models/procurement_model.dart';
 
 class ProcurementLogScreen extends StatefulWidget {
   const ProcurementLogScreen({super.key});
@@ -21,104 +24,117 @@ class _ProcurementLogScreenState extends State<ProcurementLogScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
 
-    final allProcurements = DemoCatalog.procurementsForSession(DemoCatalog.activeSessionId);
-    final filteredList = allProcurements.where((p) {
-      final farmer = DemoCatalog.farmerById(p.farmerId);
-      final nameMatch = farmer?.name.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false;
-      final vehicleMatch = p.vehicleNumber.toLowerCase().contains(_searchQuery.toLowerCase());
-      return nameMatch || vehicleMatch;
-    }).toList();
+    return Consumer3<ProcurementProvider, SessionProvider, FarmerProvider>(
+      builder: (context, procurementProvider, sessionProvider, farmerProvider, child) {
+        return FutureBuilder<List<ProcurementModel>>(
+          future: procurementProvider.getProcurementsForSession(sessionProvider.activeSessionId),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
 
-    final totalWeight = filteredList.fold(0.0, (sum, p) => sum + p.netWeightQtl);
-    final totalAmount = filteredList.fold(0.0, (sum, p) => sum + p.totalAmount);
-    final totalTrolleys = filteredList.length;
+            final allProcurements = snapshot.data!;
+            final filteredList = allProcurements.where((p) {
+              final farmer = farmerProvider.getFarmerById(p.farmerId);
+              final nameMatch = farmer?.name.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false;
+              final vehicleMatch = p.vehicleNumber.toLowerCase().contains(_searchQuery.toLowerCase());
+              return nameMatch || vehicleMatch;
+            }).toList();
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Column(
-          children: [
-            Text(
-              l10n.procurementLog.toUpperCase(),
-              style: const TextStyle(
-                color: Color(0xFF365E32),
-                fontWeight: FontWeight.w900,
-                fontSize: 16,
-                letterSpacing: 1.1,
-              ),
-            ),
-            Text(
-              '${l10n.activeSession.toUpperCase()}: ${DemoCatalog.activeSession()?.name ?? 'N/A'}',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: Colors.grey,
-                fontWeight: FontWeight.bold,
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
-        centerTitle: true,
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/procurement/add'),
-        backgroundColor: const Color(0xFF1B5E20),
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: const Icon(Icons.add_task_rounded, color: Colors.white),
-      ),
-      body: Column(
-        children: [
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(
-              children: [
-                _buildQuickStats(theme, totalWeight, totalAmount, totalTrolleys, l10n),
-                const SizedBox(height: 16),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+            final totalWeight = filteredList.fold(0.0, (sum, p) => sum + p.netWeightQtl);
+            final totalAmount = filteredList.fold(0.0, (sum, p) => sum + p.totalAmount);
+            final totalTrolleys = filteredList.length;
+
+            return Scaffold(
+              backgroundColor: const Color(0xFFF9FAFB),
+              appBar: AppBar(
+                backgroundColor: Colors.white,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                title: Column(
+                  children: [
+                    Text(
+                      l10n.procurementLog.toUpperCase(),
+                      style: const TextStyle(
+                        color: Color(0xFF365E32),
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                        letterSpacing: 1.1,
                       ),
-                    ],
-                  ),
-                  child: TextField(
-                    onChanged: (v) => setState(() => _searchQuery = v),
-                    decoration: InputDecoration(
-                      hintText: l10n.searchFarmerVehicle,
-                      hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
-                      prefixIcon: const Icon(Icons.search, size: 20, color: Color(0xFF64748B)),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    Text(
+                      '${l10n.activeSession.toUpperCase()}: ${sessionProvider.activeSession?.name ?? 'N/A'}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: Colors.grey,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+                centerTitle: true,
+              ),
+              floatingActionButton: FloatingActionButton(
+                onPressed: () => context.push('/procurement/add'),
+                backgroundColor: const Color(0xFF1B5E20),
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: const Icon(Icons.add_task_rounded, color: Colors.white),
+              ),
+              body: Column(
+                children: [
+                  Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    child: Column(
+                      children: [
+                        _buildQuickStats(theme, totalWeight, totalAmount, totalTrolleys, l10n),
+                        const SizedBox(height: 16),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: TextField(
+                            onChanged: (v) => setState(() => _searchQuery = v),
+                            decoration: InputDecoration(
+                              hintText: l10n.searchFarmerVehicle,
+                              hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
+                              prefixIcon: const Icon(Icons.search, size: 20, color: Color(0xFF64748B)),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Scrollbar(
-              thumbVisibility: true,
-              child: ListView.separated(
-                padding: const EdgeInsets.all(20),
-                itemCount: filteredList.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 16),
-                itemBuilder: (context, index) => _ProcurementCard(procurement: filteredList[index]),
+                  Expanded(
+                    child: Scrollbar(
+                      thumbVisibility: true,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.all(20),
+                        itemCount: filteredList.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: 16),
+                        itemBuilder: (context, index) => _ProcurementCard(procurement: filteredList[index], farmerProvider: farmerProvider),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ),
-        ],
-      ),
+            );
+          }
+        );
+      },
     );
   }
 
@@ -187,13 +203,14 @@ class _StatItem extends StatelessWidget {
 
 class _ProcurementCard extends StatelessWidget {
   final ProcurementModel procurement;
-  const _ProcurementCard({required this.procurement});
+  final FarmerProvider farmerProvider;
+  const _ProcurementCard({required this.procurement, required this.farmerProvider});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
-    final farmer = DemoCatalog.farmerById(procurement.farmerId);
+    final farmer = farmerProvider.getFarmerById(procurement.farmerId);
 
     final currencyFormatter = NumberFormat.currency(
       locale: 'en_IN',

@@ -3,8 +3,11 @@ import 'package:gur_bhatti_manager/l10n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:gur_bhatti_manager/features/auth/data/auth_provider.dart';
+import 'package:gur_bhatti_manager/features/procurement/data/procurement_provider.dart';
+import 'package:gur_bhatti_manager/features/session/data/session_provider.dart';
+import 'package:gur_bhatti_manager/features/farmer/data/farmer_provider.dart';
 
-import '../../../data/demo_catalog.dart';
+import '../../procurement/domain/models/procurement_model.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -17,83 +20,101 @@ class DashboardScreen extends StatelessWidget {
     final authProvider = context.watch<AuthProvider>();
     final bhatti = authProvider.bhatti;
     
-    final session = DemoCatalog.activeSession();
-    final sid = session?.id ?? DemoCatalog.activeSessionId;
+    return Consumer3<ProcurementProvider, SessionProvider, FarmerProvider>(
+      builder: (context, procurementProvider, sessionProvider, farmerProvider, child) {
+        final session = sessionProvider.activeSession;
+        final sid = session?.id ?? sessionProvider.activeSessionId;
 
-    final netWeight = DemoCatalog.totalNetWeightQtlForSession(sid);
-    final farmerCount = DemoCatalog.uniqueFarmerCountForSession(sid);
-    final fin = DemoCatalog.financialTotalsForSession(sid);
-    final totalDue = fin.$1 - fin.$2;
+        return FutureBuilder(
+          future: Future.wait([
+            procurementProvider.getTotalNetWeightForSession(sid),
+            procurementProvider.getFinancialTotalsForSession(sid),
+            procurementProvider.getRecentProcurements(),
+          ]),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
 
-    final recentProcurements = DemoCatalog.recentProcurements(n: 3);
+            final netWeight = snapshot.data![0] as double;
+            final fin = snapshot.data![1] as (double, double);
+            final recentProcurementsAll = snapshot.data![2] as List<ProcurementModel>;
+            
+            final totalDue = fin.$1 - fin.$2;
+            final recentProcurements = recentProcurementsAll.take(3).toList();
+            final farmerCount = recentProcurements.map((p) => p.farmerId).toSet().length;
 
-    return Scaffold(
-      backgroundColor: scheme.surface,
-      appBar: AppBar(
-        leadingWidth: 56,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 16),
-          child: Image.asset(
-            'assets/images/bhatti_logo.png',
-            fit: BoxFit.contain,
-          ),
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              bhatti?.bhattiName ?? l10n.appTitle,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-            _buildSessionChip(context, theme, scheme, session),
-          ],
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: InkWell(
-              onTap: () => context.push('/settings'),
-              borderRadius: BorderRadius.circular(20),
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: scheme.secondary,
-                child: Text(
-                  (bhatti?.ownerName.isNotEmpty == true) ? bhatti!.ownerName[0].toUpperCase() : 'U',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+            return Scaffold(
+              backgroundColor: scheme.surface,
+              appBar: AppBar(
+                leadingWidth: 56,
+                leading: Padding(
+                  padding: const EdgeInsets.only(left: 16),
+                  child: Image.asset(
+                    'assets/images/bhatti_logo.png',
+                    fit: BoxFit.contain,
                   ),
                 ),
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      bhatti?.bhattiName ?? l10n.appTitle,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    _buildSessionChip(context, theme, scheme, session, sessionProvider),
+                  ],
+                ),
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: InkWell(
+                      onTap: () => context.push('/settings'),
+                      borderRadius: BorderRadius.circular(20),
+                      child: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: scheme.secondary,
+                        child: Text(
+                          (bhatti?.ownerName.isNotEmpty == true) ? bhatti!.ownerName[0].toUpperCase() : 'U',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ),
-        ],
-      ),
-      body: Scrollbar(
-        thumbVisibility: true,
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          children: [
-            _buildMainStats(theme, scheme, netWeight, totalDue, l10n),
-            const SizedBox(height: 24),
-            _buildSectionHeader(theme, l10n.liveOperations, () => context.go('/procurement'), l10n),
-            const SizedBox(height: 12),
-            _KpiRow(farmerCount: farmerCount, paidAmount: fin.$2, scheme: scheme, l10n: l10n),
-            const SizedBox(height: 28),
-            _buildSectionHeader(theme, l10n.recentIntake, () => context.go('/procurement'), l10n),
-            const SizedBox(height: 12),
-            ...recentProcurements.map((p) => _ProcurementCard(procurement: p)),
-            const SizedBox(height: 32),
-            _buildActionCard(context, theme, scheme, l10n),
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
+              body: Scrollbar(
+                thumbVisibility: true,
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  children: [
+                    _buildMainStats(theme, scheme, netWeight, totalDue, l10n),
+                    const SizedBox(height: 24),
+                    _buildSectionHeader(theme, l10n.liveOperations, () => context.go('/procurement'), l10n),
+                    const SizedBox(height: 12),
+                    _KpiRow(farmerCount: farmerCount, paidAmount: fin.$2, scheme: scheme, l10n: l10n),
+                    const SizedBox(height: 28),
+                    _buildSectionHeader(theme, l10n.recentIntake, () => context.go('/procurement'), l10n),
+                    const SizedBox(height: 12),
+                    ...recentProcurements.map((p) => _ProcurementCard(procurement: p)),
+                    const SizedBox(height: 32),
+                    _buildActionCard(context, theme, scheme, l10n),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -192,9 +213,9 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSessionChip(BuildContext context, ThemeData theme, ColorScheme scheme, dynamic session) {
+  Widget _buildSessionChip(BuildContext context, ThemeData theme, ColorScheme scheme, dynamic session, SessionProvider sessionProvider) {
     return InkWell(
-      onTap: () => _showSessionPicker(context),
+      onTap: () => _showSessionPicker(context, sessionProvider),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -211,10 +232,9 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  void _showSessionPicker(BuildContext context) {
+  void _showSessionPicker(BuildContext context, SessionProvider sessionProvider) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final sessions = DemoCatalog.sessions;
 
     showModalBottomSheet(
       context: context,
@@ -223,74 +243,83 @@ class DashboardScreen extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Switch Season', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded),
-                        style: IconButton.styleFrom(backgroundColor: Colors.grey[100]),
+        return FutureBuilder(
+          future: sessionProvider.sessions,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()));
+            }
+            final sessions = snapshot.data!;
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Switch Season', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.close_rounded),
+                            style: IconButton.styleFrom(backgroundColor: Colors.grey[100]),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 16),
+                    ...sessions.map((s) => ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: s.isActive ? scheme.primary.withValues(alpha: 0.1) : Colors.grey[100],
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.history_edu_rounded, 
+                          color: s.isActive ? scheme.primary : Colors.grey[600],
+                          size: 20,
+                        ),
+                      ),
+                      title: Text(
+                        s.name, 
+                        style: TextStyle(
+                          fontWeight: s.isActive ? FontWeight.bold : FontWeight.normal,
+                          color: s.isActive ? scheme.primary : Colors.black87,
+                        ),
+                      ),
+                      subtitle: Text('Season: ${s.startDate.year}-${s.endDate.year}'),
+                      trailing: s.isActive 
+                          ? Icon(Icons.check_circle_rounded, color: scheme.primary) 
+                          : null,
+                      onTap: () {
+                        // In a real app, this would call sessionProvider.setActiveSession(s.id)
+                        Navigator.pop(context);
+                      },
+                    )),
+                    const Divider(height: 32),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: TextButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          context.push('/settings/sessions');
+                        },
+                        icon: const Icon(Icons.settings_outlined),
+                        label: const Text('Manage All Seasons'),
+                        style: TextButton.styleFrom(foregroundColor: scheme.primary),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                ...sessions.map((s) => ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: s.isActive ? scheme.primary.withValues(alpha: 0.1) : Colors.grey[100],
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.history_edu_rounded, 
-                      color: s.isActive ? scheme.primary : Colors.grey[600],
-                      size: 20,
-                    ),
-                  ),
-                  title: Text(
-                    s.name, 
-                    style: TextStyle(
-                      fontWeight: s.isActive ? FontWeight.bold : FontWeight.normal,
-                      color: s.isActive ? scheme.primary : Colors.black87,
-                    ),
-                  ),
-                  subtitle: Text('Season: ${s.startDate.year}-${s.endDate.year}'),
-                  trailing: s.isActive 
-                      ? Icon(Icons.check_circle_rounded, color: scheme.primary) 
-                      : null,
-                  onTap: () {
-                    // In a real app, this would call sessionProvider.setActiveSession(s.id)
-                    Navigator.pop(context);
-                  },
-                )),
-                const Divider(height: 32),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: TextButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      context.push('/settings/sessions');
-                    },
-                    icon: const Icon(Icons.settings_outlined),
-                    label: const Text('Manage All Seasons'),
-                    style: TextButton.styleFrom(foregroundColor: scheme.primary),
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          }
         );
       },
     );
@@ -362,13 +391,14 @@ class _KpiBox extends StatelessWidget {
 }
 
 class _ProcurementCard extends StatelessWidget {
-  final dynamic procurement;
+  final ProcurementModel procurement;
   const _ProcurementCard({required this.procurement});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final farmer = DemoCatalog.farmerById(procurement.farmerId);
+    final farmerProvider = context.read<FarmerProvider>();
+    final farmer = farmerProvider.getFarmerById(procurement.farmerId);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

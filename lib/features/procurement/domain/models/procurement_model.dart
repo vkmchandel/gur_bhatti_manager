@@ -1,4 +1,4 @@
-import '../core/domain/payment_status.dart';
+import '../../../../core/domain/payment_status.dart';
 
 class ProcurementModel {
   const ProcurementModel({

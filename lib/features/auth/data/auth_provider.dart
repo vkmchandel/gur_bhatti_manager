@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../domain/bhatti_model.dart';
+import '../domain/models/bhatti_model.dart';
 
 class AuthProvider extends ChangeNotifier {
   BhattiModel? _bhatti;

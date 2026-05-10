@@ -3,7 +3,7 @@ import 'package:gur_bhatti_manager/l10n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:gur_bhatti_manager/features/auth/data/auth_provider.dart';
-import '../../../data/demo_catalog.dart';
+import 'package:gur_bhatti_manager/features/session/data/session_provider.dart';
 import '../../../core/providers/locale_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -15,10 +15,10 @@ class SettingsScreen extends StatelessWidget {
     final scheme = theme.colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final authProvider = context.watch<AuthProvider>();
+    final sessionProvider = context.watch<SessionProvider>();
     final bhatti = authProvider.bhatti;
     
-    final activeSession = DemoCatalog.activeSession();
-    final farmerCount = DemoCatalog.uniqueFarmerCountForSession(activeSession?.id ?? '');
+    final activeSession = sessionProvider.activeSession;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -37,7 +37,17 @@ class SettingsScreen extends StatelessWidget {
             if (bhatti != null) ...[
               _buildBhattiProfile(theme, scheme, bhatti, l10n),
               const SizedBox(height: 16),
-              _buildQuickStats(theme, scheme, activeSession?.name ?? '-', farmerCount.toString()),
+              FutureBuilder<int>(
+                future: sessionProvider.getUniqueFarmerCountForSession(activeSession?.id ?? ''),
+                builder: (context, snapshot) {
+                  return _buildQuickStats(
+                    theme, 
+                    scheme, 
+                    activeSession?.name ?? '-', 
+                    snapshot.data?.toString() ?? '...',
+                  );
+                }
+              ),
               const SizedBox(height: 24),
             ],
             
@@ -211,7 +221,7 @@ class SettingsScreen extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(children: children),
@@ -226,32 +236,27 @@ class SettingsScreen extends StatelessWidget {
       builder: (context) => AlertDialog(
         title: Text(l10n.selectLanguage),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<String>(
-              title: const Text('English'),
-              value: 'en',
-              groupValue: localeProvider.locale.languageCode,
-              onChanged: (v) {
-                if (v != null) {
-                  localeProvider.setLocale(Locale(v));
-                  Navigator.pop(context);
-                }
-              },
-            ),
-            RadioListTile<String>(
-              title: const Text('हिंदी (Hindi)'),
-              value: 'hi',
-              groupValue: localeProvider.locale.languageCode,
-              onChanged: (v) {
-                if (v != null) {
-                  localeProvider.setLocale(Locale(v));
-                  Navigator.pop(context);
-                }
-              },
-            ),
-          ],
+        content: RadioGroup<String>(
+          groupValue: localeProvider.locale.languageCode,
+          onChanged: (v) {
+            if (v != null) {
+              localeProvider.setLocale(Locale(v));
+              Navigator.pop(context);
+            }
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              RadioListTile<String>(
+                title: Text('English'),
+                value: 'en',
+              ),
+              RadioListTile<String>(
+                title: Text('हिंदी (Hindi)'),
+                value: 'hi',
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -297,7 +302,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,7 +349,7 @@ class _MenuTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (trailing != null) trailing!,
+          trailing ?? const SizedBox.shrink(),
           if (showArrow) const Icon(Icons.chevron_right, size: 20, color: Colors.grey),
         ],
       ),

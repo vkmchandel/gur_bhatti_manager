@@ -7,12 +7,15 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/domain/payment_status.dart';
-import '../../../data/demo_catalog.dart';
-import '../../../data/procurement_model.dart';
-import '../../../features/farmer/domain/farmer.dart';
+import '../domain/models/procurement_model.dart';
+import '../../../features/farmer/domain/models/farmer_model.dart';
+import '../../../features/farmer/data/farmer_provider.dart';
+import '../../../features/procurement/data/procurement_provider.dart';
+import '../../../features/session/data/session_provider.dart';
 
 class AddProcurementScreen extends StatefulWidget {
   final String? editProcurementId;
@@ -29,7 +32,7 @@ class AddProcurementScreen extends StatefulWidget {
 class _AddProcurementScreenState extends State<AddProcurementScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  Farmer? _selectedFarmer;
+  FarmerModel? _selectedFarmer;
   final _grossController = TextEditingController();
   final _tareController = TextEditingController();
   final _trashController = TextEditingController(text: '0');
@@ -47,19 +50,28 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
     _tareController.addListener(_updateCalculations);
     _rateController.addListener(() => setState(() {}));
 
-    if (widget.editProcurementId != null) {
-      final p = DemoCatalog.procurements.firstWhere((p) => p.id == widget.editProcurementId);
-      _selectedFarmer = DemoCatalog.farmerById(p.farmerId);
-      _grossController.text = p.grossWeightQtl.toString();
-      _tareController.text = p.tareWeightQtl.toString();
-      _trashController.text = p.trashDeductionQtl.toString();
-      _rateController.text = p.ratePerQtl.toString();
-      _vehicleController.text = p.vehicleNumber;
-      _selectedDate = p.date;
-      if (p.hasVehiclePhoto) {
-        _photos.add(XFile('demo')); // Placeholder for existing photo
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (widget.editProcurementId != null) {
+        final procurementProvider = Provider.of<ProcurementProvider>(context, listen: false);
+        final farmerProvider = Provider.of<FarmerProvider>(context, listen: false);
+
+        final p = await procurementProvider.getProcurementById(widget.editProcurementId!);
+        if (p != null) {
+          setState(() {
+            _selectedFarmer = farmerProvider.getFarmerById(p.farmerId);
+            _grossController.text = p.grossWeightQtl.toString();
+            _tareController.text = p.tareWeightQtl.toString();
+            _trashController.text = p.trashDeductionQtl.toString();
+            _rateController.text = p.ratePerQtl.toString();
+            _vehicleController.text = p.vehicleNumber;
+            _selectedDate = p.date;
+            if (p.hasVehiclePhoto) {
+              _photos.add(XFile('demo')); // Placeholder for existing photo
+            }
+          });
+        }
       }
-    }
+    });
   }
 
   @override
@@ -153,9 +165,12 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
 
     setState(() => _isSaving = true);
     
+    final procurementProvider = context.read<ProcurementProvider>();
+    final sessionProvider = context.read<SessionProvider>();
+
     final procurement = ProcurementModel(
       id: widget.editProcurementId ?? const Uuid().v4(),
-      sessionId: DemoCatalog.activeSessionId,
+      sessionId: sessionProvider.activeSessionId,
       farmerId: _selectedFarmer!.id,
       date: _selectedDate,
       vehicleNumber: _vehicleController.text.trim().toUpperCase(),
@@ -171,9 +186,9 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
     );
 
     if (widget.editProcurementId != null) {
-      DemoCatalog.updateProcurement(procurement);
+      await procurementProvider.updateProcurement(procurement);
     } else {
-      DemoCatalog.addProcurement(procurement);
+      await procurementProvider.addProcurement(procurement);
     }
 
     await Future.delayed(const Duration(milliseconds: 500)); 
@@ -434,9 +449,9 @@ class _AddProcurementScreenState extends State<AddProcurementScreen> {
         );
       },
       suggestionsBuilder: (context, controller) {
-        final query = controller.text.toLowerCase();
-        return DemoCatalog.farmers
-          .where((f) => f.name.toLowerCase().contains(query) || f.village.toLowerCase().contains(query))
+        final query = controller.text;
+        final farmerProvider = context.read<FarmerProvider>();
+        return farmerProvider.searchFarmers(query)
           .map((f) => ListTile(
             title: Text(f.name),
             subtitle: Text(f.village),

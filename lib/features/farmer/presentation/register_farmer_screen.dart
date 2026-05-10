@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:gur_bhatti_manager/l10n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 
-import '../../../data/demo_catalog.dart';
+import '../data/farmer_provider.dart';
+import '../domain/models/farmer_model.dart';
 
 class RegisterFarmerScreen extends StatefulWidget {
   const RegisterFarmerScreen({super.key, this.farmerId});
@@ -27,7 +30,8 @@ class _RegisterFarmerScreenState extends State<RegisterFarmerScreen> {
   @override
   void initState() {
     super.initState();
-    final existing = widget.farmerId != null ? DemoCatalog.farmerById(widget.farmerId!) : null;
+    final farmerProvider = context.read<FarmerProvider>();
+    final existing = widget.farmerId != null ? farmerProvider.getFarmerById(widget.farmerId!) : null;
     _name = TextEditingController(text: existing?.name ?? '');
     _village = TextEditingController(text: existing?.village ?? '');
     _mobile = TextEditingController(text: existing?.mobile ?? '');
@@ -50,6 +54,25 @@ class _RegisterFarmerScreenState extends State<RegisterFarmerScreen> {
   void _onSave(AppLocalizations l10n) async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
+    
+    final farmerProvider = context.read<FarmerProvider>();
+    final newFarmer = FarmerModel(
+      id: widget.farmerId ?? const Uuid().v4(),
+      name: _name.text,
+      village: _village.text,
+      mobile: _mobile.text,
+      bankName: _bank.text.isNotEmpty ? _bank.text : null,
+      bankAccount: _account.text.isNotEmpty ? _account.text : null,
+      ifscCode: _ifsc.text.isNotEmpty ? _ifsc.text : null,
+    );
+
+    // In a real app we would have an update method, but for now we follow the provider logic
+    if (widget.farmerId == null) {
+      await farmerProvider.addFarmer(newFarmer);
+    } else {
+      await farmerProvider.updateFarmer(newFarmer);
+    }
+
     await Future.delayed(const Duration(milliseconds: 800));
     if (mounted) {
       context.pop();
@@ -113,7 +136,9 @@ class _RegisterFarmerScreenState extends State<RegisterFarmerScreen> {
                 validator: (v) => (v == null || v.trim().isEmpty) ? l10n.required : null,
               ),
               const SizedBox(height: 12),
-              _buildVillageChips(theme, scheme),
+              Consumer<FarmerProvider>(
+                builder: (context, farmerProvider, child) => _buildVillageChips(theme, scheme, farmerProvider),
+              ),
 
               const SizedBox(height: 32),
               _buildSectionLabel(theme, l10n.bankingInfo),
@@ -171,8 +196,8 @@ class _RegisterFarmerScreenState extends State<RegisterFarmerScreen> {
     );
   }
 
-  Widget _buildVillageChips(ThemeData theme, ColorScheme scheme) {
-    final villages = DemoCatalog.knownVillages();
+  Widget _buildVillageChips(ThemeData theme, ColorScheme scheme, FarmerProvider farmerProvider) {
+    final villages = farmerProvider.knownVillages;
     return Wrap(
       spacing: 8,
       runSpacing: 8,

@@ -1,8 +1,8 @@
 import '../core/domain/payment_status.dart';
-import '../features/farmer/domain/farmer.dart';
-import 'procurement_model.dart';
-import 'session_model.dart';
-import 'payment_model.dart';
+import '../features/farmer/domain/models/farmer_model.dart';
+import '../features/procurement/domain/models/procurement_model.dart';
+import '../features/session/domain/models/session_model.dart';
+import '../features/farmer/domain/models/payment_model.dart';
 
 /// Central demo data for UI flows; replace with API/repository.
 abstract final class DemoCatalog {
@@ -25,8 +25,8 @@ abstract final class DemoCatalog {
     ),
   ];
 
-  static final List<Farmer> farmers = [
-    const Farmer(
+  static final List<FarmerModel> farmers = [
+    const FarmerModel(
       id: 'f1',
       name: 'Rajesh Kumar',
       village: 'Chourai',
@@ -35,7 +35,7 @@ abstract final class DemoCatalog {
       bankAccount: '12345678901',
       ifscCode: 'SBIN0001234',
     ),
-    const Farmer(
+    const FarmerModel(
       id: 'f2',
       name: 'Sunita Devi',
       village: 'Malwa',
@@ -44,7 +44,7 @@ abstract final class DemoCatalog {
       bankAccount: '998877665544',
       ifscCode: 'HDFC0009876',
     ),
-    const Farmer(
+    const FarmerModel(
       id: 'f3',
       name: 'Amit Singh',
       village: 'Pipariya',
@@ -53,7 +53,7 @@ abstract final class DemoCatalog {
       bankAccount: null,
       ifscCode: null,
     ),
-    const Farmer(
+    const FarmerModel(
       id: 'f4',
       name: 'Vikram Rathore',
       village: 'Sehore',
@@ -179,7 +179,7 @@ abstract final class DemoCatalog {
     return sessions.isEmpty ? null : sessions.first;
   }
 
-  static Farmer? farmerById(String id) {
+  static FarmerModel? farmerById(String id) {
     for (final f in farmers) {
       if (f.id == id) return f;
     }

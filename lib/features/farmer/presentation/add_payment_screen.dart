@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../data/demo_catalog.dart';
-import '../../../data/payment_model.dart';
-import '../../../features/farmer/domain/farmer.dart';
+import '../data/farmer_provider.dart';
+import '../../procurement/data/procurement_provider.dart';
+import '../../procurement/domain/models/procurement_model.dart';
+import '../../session/data/session_provider.dart';
+import '../domain/models/payment_model.dart';
+import '../domain/models/farmer_model.dart';
 import '../../../l10n/generated/app_localizations.dart';
 
 class AddPaymentScreen extends StatefulWidget {
@@ -61,17 +65,18 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
     }
   }
 
-  void _onSave(AppLocalizations l10n) async {
+  void _onSave(AppLocalizations l10n, SessionProvider sessionProvider) async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
     
     final amount = double.tryParse(_amountController.text) ?? 0.0;
+    final farmerProvider = context.read<FarmerProvider>();
     
     final payment = PaymentModel(
       id: _editingPayment?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       farmerId: widget.farmerId,
-      sessionId: DemoCatalog.activeSessionId,
+      sessionId: sessionProvider.activeSessionId,
       date: _selectedDate,
       amount: amount,
       note: _noteController.text,
@@ -79,10 +84,11 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
 
     // Simulating save logic
     await Future.delayed(const Duration(milliseconds: 500));
+
     if (_editingPayment != null) {
-      DemoCatalog.manualPayments.removeWhere((p) => p.id == _editingPayment!.id);
+      farmerProvider.deletePayment(_editingPayment!.id);
     }
-    DemoCatalog.addPayment(payment);
+    farmerProvider.addPayment(payment);
     
     if (mounted) {
       context.pop();
@@ -96,83 +102,100 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
-    final farmer = DemoCatalog.farmerById(widget.farmerId);
-
-    if (farmer == null) return const Scaffold(body: Center(child: Text('Farmer not found')));
-
-    // Dynamic balance calculation
-    final procurements = DemoCatalog.procurementsForFarmer(widget.farmerId);
-    final payments = DemoCatalog.paymentsForFarmer(widget.farmerId);
     
-    double totalDue = procurements.fold(0.0, (sum, p) => sum + p.totalAmount);
-    double totalPaid = payments.fold(0.0, (sum, p) => sum + p.amount);
-    
-    double currentBalance = totalDue - totalPaid;
-    if (_editingPayment != null) {
-      currentBalance += _editingPayment!.amount;
-    }
+    return Consumer3<FarmerProvider, ProcurementProvider, SessionProvider>(
+      builder: (context, farmerProvider, procurementProvider, sessionProvider, child) {
+        final farmer = farmerProvider.getFarmerById(widget.farmerId);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1B3D2F)),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          _editingPayment != null ? 'EDIT PAYMENT' : 'RECORD PAYMENT',
-          style: const TextStyle(
-            color: Color(0xFF365E32),
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            letterSpacing: 1.1,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          children: [
-            _buildSectionLabel('FARMER'),
-            const SizedBox(height: 12),
-            _buildFarmerMiniCard(farmer, theme),
-            const SizedBox(height: 32),
-            _buildSummaryCard(currentBalance),
-            const SizedBox(height: 32),
-            _buildSectionLabel('PAYMENT DETAILS'),
-            const SizedBox(height: 12),
-            _buildAmountField(currentBalance),
-            const SizedBox(height: 16),
-            _buildDateField(context),
-            const SizedBox(height: 16),
-            _buildNoteField(),
-            const SizedBox(height: 40),
-            SizedBox(
-              height: 56,
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _isSaving ? null : () => _onSave(l10n),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF1B5E20),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 2,
+        if (farmer == null) return const Scaffold(body: Center(child: Text('Farmer not found')));
+
+        // Dynamic balance calculation
+        return FutureBuilder<List<dynamic>>(
+          future: Future.wait([
+            procurementProvider.getProcurementsForFarmer(widget.farmerId),
+            farmerProvider.getPaymentsForFarmer(widget.farmerId),
+          ]),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
+
+            final procurements = snapshot.data![0] as List<ProcurementModel>;
+            final payments = snapshot.data![1] as List<PaymentModel>;
+            
+            double totalDue = procurements.fold(0.0, (sum, p) => sum + p.totalAmount);
+            double totalPaid = payments.fold(0.0, (sum, p) => sum + p.amount);
+            
+            double currentBalance = totalDue - totalPaid;
+            if (_editingPayment != null) {
+              currentBalance += _editingPayment!.amount;
+            }
+
+            return Scaffold(
+              backgroundColor: const Color(0xFFF9FAFB),
+              appBar: AppBar(
+                backgroundColor: Colors.white,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF1B3D2F)),
+                  onPressed: () => context.pop(),
                 ),
-                child: _isSaving
-                    ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
-                    : Text(
-                        _editingPayment != null ? 'UPDATE PAYMENT' : 'CONFIRM PAYMENT',
-                        style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
-                      ),
+                title: Text(
+                  _editingPayment != null ? 'EDIT PAYMENT' : 'RECORD PAYMENT',
+                  style: const TextStyle(
+                    color: Color(0xFF365E32),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+                centerTitle: true,
               ),
-            ),
-          ],
-        ),
-      ),
+              body: Form(
+                key: _formKey,
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  children: [
+                    _buildSectionLabel('FARMER'),
+                    const SizedBox(height: 12),
+                    _buildFarmerMiniCard(farmer, theme),
+                    const SizedBox(height: 32),
+                    _buildSummaryCard(currentBalance),
+                    const SizedBox(height: 32),
+                    _buildSectionLabel('PAYMENT DETAILS'),
+                    const SizedBox(height: 12),
+                    _buildAmountField(currentBalance),
+                    const SizedBox(height: 16),
+                    _buildDateField(context),
+                    const SizedBox(height: 16),
+                    _buildNoteField(),
+                    const SizedBox(height: 40),
+                    SizedBox(
+                      height: 56,
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: _isSaving ? null : () => _onSave(l10n, sessionProvider),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF1B5E20),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 2,
+                        ),
+                        child: _isSaving
+                            ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+                            : Text(
+                                _editingPayment != null ? 'UPDATE PAYMENT' : 'CONFIRM PAYMENT',
+                                style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+        );
+      },
     );
   }
 
@@ -188,7 +211,7 @@ class _AddPaymentScreenState extends State<AddPaymentScreen> {
     );
   }
 
-  Widget _buildFarmerMiniCard(Farmer farmer, ThemeData theme) {
+  Widget _buildFarmerMiniCard(FarmerModel farmer, ThemeData theme) {
     return Card(
       elevation: 0.5,
       color: Colors.white,

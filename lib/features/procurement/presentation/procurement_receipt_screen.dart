@@ -6,10 +6,11 @@ import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import '../../../data/demo_catalog.dart';
-import '../../../data/procurement_model.dart';
+import '../domain/models/procurement_model.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../auth/data/auth_provider.dart';
+import '../../farmer/data/farmer_provider.dart';
+import '../data/procurement_provider.dart';
 import 'add_procurement_screen.dart';
 
 class ProcurementReceiptScreen extends StatefulWidget {
@@ -63,217 +64,227 @@ class _ProcurementReceiptScreenState extends State<ProcurementReceiptScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final procurement = DemoCatalog.procurements.firstWhere((p) => p.id == widget.procurementId);
-    final farmer = DemoCatalog.farmerById(procurement.farmerId);
     final l10n = AppLocalizations.of(context)!;
     final bhatti = context.read<AuthProvider>().bhatti;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        title: Text(l10n.intakeReceipt.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => context.pop(),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => AddProcurementScreen(editProcurementId: widget.procurementId),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Center(
-        // Removed SingleChildScrollView to try and keep it non-scrollable as requested
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Screenshot(
-                controller: _screenshotController,
-                child: Container(
-                  width: double.infinity,
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    children: [
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Header with Logo and Bhatti Name
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF365E32),
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(12),
-                                topRight: Radius.circular(12),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Image.asset('assets/images/bhatti_logo.png', height: 40, width: 40),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        (bhatti?.bhattiName ?? l10n.appTitle).toUpperCase(),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w900,
-                                        ),
-                                      ),
-                                      Text(
-                                        "${bhatti?.village ?? 'Chourai'}, ${bhatti?.district ?? 'MP'}",
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(color: Colors.white70, fontSize: 11),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+    return FutureBuilder<ProcurementModel?>(
+      future: context.read<ProcurementProvider>().getProcurementById(widget.procurementId),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
 
-                          Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        final procurement = snapshot.data!;
+        final farmer = context.read<FarmerProvider>().getFarmerById(procurement.farmerId);
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF1F5F9),
+          appBar: AppBar(
+            title: Text(l10n.intakeReceipt.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+            centerTitle: true,
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => context.pop(),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => AddProcurementScreen(editProcurementId: widget.procurementId),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          body: Center(
+            // Removed SingleChildScrollView to try and keep it non-scrollable as requested
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Screenshot(
+                    controller: _screenshotController,
+                    child: Container(
+                      width: double.infinity,
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Header with Logo and Bhatti Name
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF365E32),
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: Radius.circular(12),
+                                    topRight: Radius.circular(12),
+                                  ),
+                                ),
+                                child: Row(
                                   children: [
-                                    _buildInfoColumn(l10n.date, DateFormat('dd MMM yyyy').format(procurement.date)),
-                                    _buildInfoColumn(l10n.receiptNo, (widget.procurementId.length > 8 ? widget.procurementId.substring(0, 8) : widget.procurementId).toUpperCase()),
+                                    Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Image.asset('assets/images/bhatti_logo.png', height: 40, width: 40),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            (bhatti?.bhattiName ?? l10n.appTitle).toUpperCase(),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                          Text(
+                                            "${bhatti?.village ?? 'Chourai'}, ${bhatti?.district ?? 'MP'}",
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(color: Colors.white70, fontSize: 11),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ],
                                 ),
-                                const SizedBox(height: 16),
-                                _buildInfoRow("FARMER", farmer?.name ?? l10n.unknownFarmer, isBold: true),
-                                _buildInfoRow("VILLAGE", farmer?.village ?? "-"),
-                                _buildInfoRow("VEHICLE", procurement.vehicleNumber),
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 12),
-                                  child: Divider(height: 1, color: Color(0xFFF1F5F9)),
-                                ),
-                                
-                                _buildWeightRow(l10n.gross, procurement.grossWeightQtl),
-                                _buildWeightRow(l10n.tare, procurement.tareWeightQtl),
-                                _buildWeightRow(l10n.trash, procurement.trashDeductionQtl, isNegative: true),
-                                const SizedBox(height: 6),
-                                _buildWeightRow(l10n.netWeight, procurement.netWeightQtl, isBold: true, fontSize: 16),
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 12),
-                                  child: Divider(height: 1, color: Color(0xFFF1F5F9)),
-                                ),
-                                _buildCurrencyRow(l10n.ratePerQtl, procurement.ratePerQtl),
-                                _buildCurrencyRow(l10n.totalAmount.toUpperCase(), procurement.totalAmount, isBold: true, fontSize: 16, color: const Color(0xFF365E32)),
-                                
-                                const SizedBox(height: 24),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                              ),
+
+                              Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Column(
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Container(height: 1, width: 120, color: Colors.black12),
-                                        const SizedBox(height: 4),
-                                        Text(l10n.authorizedSignatory.toUpperCase(), style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.black38)),
+                                        _buildInfoColumn(l10n.date, DateFormat('dd MMM yyyy').format(procurement.date)),
+                                        _buildInfoColumn(l10n.receiptNo, (widget.procurementId.length > 8 ? widget.procurementId.substring(0, 8) : widget.procurementId).toUpperCase()),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildInfoRow("FARMER", farmer?.name ?? l10n.unknownFarmer, isBold: true),
+                                    _buildInfoRow("VILLAGE", farmer?.village ?? "-"),
+                                    _buildInfoRow("VEHICLE", procurement.vehicleNumber),
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 12),
+                                      child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                                    ),
+                                    
+                                    _buildWeightRow(l10n.gross, procurement.grossWeightQtl),
+                                    _buildWeightRow(l10n.tare, procurement.tareWeightQtl),
+                                    _buildWeightRow(l10n.trash, procurement.trashDeductionQtl, isNegative: true),
+                                    const SizedBox(height: 6),
+                                    _buildWeightRow(l10n.netWeight, procurement.netWeightQtl, isBold: true, fontSize: 16),
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 12),
+                                      child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                                    ),
+                                    _buildCurrencyRow(l10n.ratePerQtl, procurement.ratePerQtl),
+                                    _buildCurrencyRow(l10n.totalAmount.toUpperCase(), procurement.totalAmount, isBold: true, fontSize: 16, color: const Color(0xFF365E32)),
+                                    
+                                    const SizedBox(height: 24),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Column(
+                                          children: [
+                                            Container(height: 1, width: 120, color: Colors.black12),
+                                            const SizedBox(height: 4),
+                                            Text(l10n.authorizedSignatory.toUpperCase(), style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.black38)),
+                                          ],
+                                        ),
                                       ],
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
-                          ),
-                          
-                          // Zig-zag edge simulation
-                          Row(
-                            children: List.generate(20, (index) => Expanded(
-                              child: Container(
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: index.isEven ? const BorderRadius.vertical(bottom: Radius.circular(5)) : null,
-                                ),
                               ),
-                            )),
+                              
+                              // Zig-zag edge simulation
+                              Row(
+                                children: List.generate(20, (index) => Expanded(
+                                  child: Container(
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: index.isEven ? const BorderRadius.vertical(bottom: Radius.circular(5)) : null,
+                                    ),
+                                  ),
+                                )),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 20),
+                ],
               ),
-              const SizedBox(height: 20),
-            ],
+            ),
           ),
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -2))],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () => _shareReceiptImage(l10n, whatsappOnly: true),
-                icon: const Icon(Icons.share, size: 20),
-                label: const Text("SHARE ON WHATSAPP", style: TextStyle(fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF25D366), // WhatsApp Green
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
+          bottomNavigationBar: SafeArea(
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -2))],
               ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () => _shareReceiptImage(l10n),
-                icon: const Icon(Icons.more_horiz),
-                label: const Text("OTHER OPTIONS"),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () => _shareReceiptImage(l10n, whatsappOnly: true),
+                    icon: const Icon(Icons.share, size: 20),
+                    label: const Text("SHARE ON WHATSAPP", style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF25D366), // WhatsApp Green
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _shareReceiptImage(l10n),
+                    icon: const Icon(Icons.more_horiz),
+                    label: const Text("OTHER OPTIONS"),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      }
     );
   }
 

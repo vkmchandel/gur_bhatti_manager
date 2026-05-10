@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:gur_bhatti_manager/l10n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../data/demo_catalog.dart';
+import '../data/farmer_provider.dart';
+import '../../procurement/data/procurement_provider.dart';
+import '../../session/data/session_provider.dart';
+import '../domain/models/farmer_model.dart';
+import '../../procurement/domain/models/procurement_model.dart';
+import '../domain/models/payment_model.dart';
 
 class FarmerLedgerScreen extends StatefulWidget {
   const FarmerLedgerScreen({super.key, required this.farmerId});
@@ -19,159 +25,171 @@ class _FarmerLedgerScreenState extends State<FarmerLedgerScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final farmer = DemoCatalog.farmerById(widget.farmerId);
-
     final l10n = AppLocalizations.of(context)!;
 
-    if (farmer == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(l10n.farmerNotFound.toUpperCase()),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.go('/'),
-          ),
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(l10n.farmerNotFoundDesc),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
+    return Consumer3<FarmerProvider, ProcurementProvider, SessionProvider>(
+      builder: (context, farmerProvider, procurementProvider, sessionProvider, child) {
+        final farmer = farmerProvider.getFarmerById(widget.farmerId);
+
+        if (farmer == null) {
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(l10n.farmerNotFound.toUpperCase()),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
                 onPressed: () => context.go('/'),
-                icon: const Icon(Icons.home_rounded),
-                label: Text(l10n.home.toUpperCase()),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final sessionId = DemoCatalog.activeSessionId;
-    final procurements = DemoCatalog.procurementsForFarmer(widget.farmerId, sessionId: sessionId);
-    final payments = DemoCatalog.paymentsForFarmer(widget.farmerId, sessionId: sessionId);
-
-    var totalWt = 0.0;
-    var totalAmt = 0.0;
-    var totalPaidAtSupply = 0.0;
-    for (final p in procurements) {
-      totalWt += p.netWeightQtl;
-      totalAmt += p.totalAmount;
-      totalPaidAtSupply += p.amountPaid;
-    }
-
-    double totalManualPaid = 0;
-    for (final p in payments) {
-      totalManualPaid += p.amount;
-    }
-
-    final totalPaid = totalManualPaid;
-    final balance = totalAmt - totalPaid;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1B3D2F)),
-          onPressed: () => context.pop(),
-        ),
-        title: Column(
-          children: [
-            const Text(
-              'FARMER PROFILE',
-              style: TextStyle(
-                color: Color(0xFF365E32),
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                letterSpacing: 1.1,
               ),
             ),
-            Text(
-              'ACTIVE SESSION: ${DemoCatalog.activeSession()?.name ?? 'N/A'}',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: Colors.grey,
-                fontWeight: FontWeight.bold,
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
-        centerTitle: true,
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await context.push('/farmers/${widget.farmerId}/payment');
-          setState(() {});
-        },
-        backgroundColor: const Color(0xFF1B5E20),
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: const Stack(
-          alignment: Alignment.center,
-          children: [
-            Padding(
-              padding: EdgeInsets.only(right: 8),
-              child: Icon(Icons.currency_rupee_rounded, size: 20, color: Colors.white),
-            ),
-            Padding(
-              padding: EdgeInsets.only(left: 14, top: 10),
-              child: Icon(Icons.add, size: 14, color: Colors.white),
-            ),
-          ],
-        ),
-      ),
-      body: Scrollbar(
-        thumbVisibility: true,
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          children: [
-            _buildIdentitySection(context, farmer, theme, scheme),
-            const SizedBox(height: 24),
-            _buildFinancialSummary(totalWt, procurements.length, totalAmt, totalPaid, balance),
-            const SizedBox(height: 32),
-            Row(
-              children: [
-                Text(
-                  'PAYMENT HISTORY',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: const Color(0xFF1B5E20),
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                    fontSize: 12,
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(l10n.farmerNotFoundDesc),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () => context.go('/'),
+                    icon: const Icon(Icons.home_rounded),
+                    label: Text(l10n.home.toUpperCase()),
                   ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(child: Divider(thickness: 1, color: Color(0xFFE2E8F0))),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            if (payments.isEmpty)
-              _buildEmptyState(theme, scheme)
-            else
-              ...payments.map((p) => _PaymentHistoryItem(
-                    date: p.date,
-                    amount: p.amount,
-                    onEdit: () async {
-                      await context.push('/farmers/${widget.farmerId}/payment', extra: p);
-                      setState(() {});
-                    },
-                    onDelete: () {
-                      _showDeleteConfirmation(context, p.id);
-                    },
-                  )),
-            const SizedBox(height: 80),
-          ],
-        ),
-      ),
+          );
+        }
+
+        final sessionId = sessionProvider.activeSessionId;
+
+        return FutureBuilder(
+          future: Future.wait([
+            procurementProvider.getProcurementsForFarmer(widget.farmerId, sessionId: sessionId),
+            farmerProvider.getPaymentsForFarmer(widget.farmerId, sessionId: sessionId),
+          ]),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
+
+            final procurements = snapshot.data![0] as List<ProcurementModel>;
+            final payments = snapshot.data![1] as List<PaymentModel>;
+
+            var totalWt = 0.0;
+            var totalAmt = 0.0;
+            for (final p in procurements) {
+              totalWt += p.netWeightQtl;
+              totalAmt += p.totalAmount;
+            }
+
+            double totalPaid = 0;
+            for (final p in payments) {
+              totalPaid += p.amount;
+            }
+
+            final balance = totalAmt - totalPaid;
+
+            return Scaffold(
+              backgroundColor: const Color(0xFFF9FAFB),
+              appBar: AppBar(
+                backgroundColor: Colors.white,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF1B3D2F)),
+                  onPressed: () => context.pop(),
+                ),
+                title: Column(
+                  children: [
+                    const Text(
+                      'FARMER PROFILE',
+                      style: TextStyle(
+                        color: Color(0xFF365E32),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    Text(
+                      'ACTIVE SESSION: ${sessionProvider.activeSession?.name ?? 'N/A'}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: Colors.grey,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+                centerTitle: true,
+              ),
+              floatingActionButton: FloatingActionButton(
+                onPressed: () async {
+                  await context.push('/farmers/${widget.farmerId}/payment');
+                },
+                backgroundColor: const Color(0xFF1B5E20),
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: const Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child: Icon(Icons.currency_rupee_rounded, size: 20, color: Colors.white),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.only(left: 14, top: 10),
+                      child: Icon(Icons.add, size: 14, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+              body: Scrollbar(
+                thumbVisibility: true,
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  children: [
+                    _buildIdentitySection(context, farmer, theme, scheme),
+                    const SizedBox(height: 24),
+                    _buildFinancialSummary(totalWt, procurements.length, totalAmt, totalPaid, balance),
+                    const SizedBox(height: 32),
+                    Row(
+                      children: [
+                        Text(
+                          'PAYMENT HISTORY',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: const Color(0xFF1B5E20),
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(child: Divider(thickness: 1, color: Color(0xFFE2E8F0))),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (payments.isEmpty)
+                      _buildEmptyState(theme, scheme)
+                    else
+                      ...payments.map((p) => _PaymentHistoryItem(
+                            date: p.date,
+                            amount: p.amount,
+                            onEdit: () async {
+                              await context.push('/farmers/${widget.farmerId}/payment', extra: p);
+                            },
+                            onDelete: () {
+                              _showDeleteConfirmation(context, farmerProvider, p.id);
+                            },
+                          )),
+                    const SizedBox(height: 80),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
-  void _showDeleteConfirmation(BuildContext context, String paymentId) {
+  void _showDeleteConfirmation(BuildContext context, FarmerProvider farmerProvider, String paymentId) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -180,10 +198,9 @@ class _FarmerLedgerScreenState extends State<FarmerLedgerScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
           TextButton(
-            onPressed: () {
-              DemoCatalog.deletePayment(paymentId);
-              Navigator.pop(context);
-              setState(() {});
+            onPressed: () async {
+              await farmerProvider.deletePayment(paymentId);
+              if (context.mounted) Navigator.pop(context);
             },
             child: const Text('DELETE', style: TextStyle(color: Colors.red)),
           ),
@@ -192,7 +209,7 @@ class _FarmerLedgerScreenState extends State<FarmerLedgerScreen> {
     );
   }
 
-  Widget _buildIdentitySection(BuildContext context, var farmer, ThemeData theme, ColorScheme scheme) {
+  Widget _buildIdentitySection(BuildContext context, FarmerModel farmer, ThemeData theme, ColorScheme scheme) {
     return Card(
       elevation: 0.5,
       color: Colors.white,
@@ -278,7 +295,7 @@ class _FarmerLedgerScreenState extends State<FarmerLedgerScreen> {
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildInfoItem(Icons.account_balance_outlined, 'BANK', farmer.bankName)),
+                Expanded(child: _buildInfoItem(Icons.account_balance_outlined, 'BANK', farmer.bankName ?? 'N/A')),
                 Expanded(
                   child: _buildInfoItem(
                     Icons.credit_card_outlined,

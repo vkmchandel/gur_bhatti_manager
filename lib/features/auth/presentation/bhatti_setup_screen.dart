@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../data/auth_provider.dart';
-import '../domain/bhatti_model.dart';
+import '../domain/models/bhatti_model.dart';
 
 class BhattiSetupScreen extends StatefulWidget {
   const BhattiSetupScreen({super.key});
@@ -314,7 +314,7 @@ class _BhattiSetupScreenState extends State<BhattiSetupScreen> {
                         Theme(
                           data: Theme.of(context).copyWith(
                             scrollbarTheme: ScrollbarThemeData(
-                              thumbColor: WidgetStateProperty.all(_forestGreen.withOpacity(0.8)),
+                              thumbColor: WidgetStateProperty.all(_forestGreen.withValues(alpha: 0.8)),
                               trackColor: WidgetStateProperty.all(Colors.grey[200]),
                               thickness: WidgetStateProperty.all(6),
                               radius: const Radius.circular(10),
@@ -349,7 +349,7 @@ class _BhattiSetupScreenState extends State<BhattiSetupScreen> {
                                             _villageController.text = selected ? village : '';
                                           });
                                         },
-                                        selectedColor: _amberHighlight.withOpacity(0.3),
+                                        selectedColor: _amberHighlight.withValues(alpha: 0.3),
                                         checkmarkColor: _forestGreen,
                                         labelStyle: TextStyle(
                                           color: isSelected ? _forestGreen : Colors.black87,
@@ -428,7 +428,7 @@ class _BhattiSetupScreenState extends State<BhattiSetupScreen> {
       style: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.bold,
-        color: _forestGreen.withOpacity(0.8),
+        color: _forestGreen.withValues(alpha: 0.8),
         letterSpacing: 1.2,
       ),
     );
