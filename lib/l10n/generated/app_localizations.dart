@@ -769,6 +769,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Share'**
   String get share;
+
+  /// No description provided for @trolleys.
+  ///
+  /// In en, this message translates to:
+  /// **'Trolleys'**
+  String get trolleys;
+
+  /// No description provided for @welcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to GurBatti Manager'**
+  String get welcomeTitle;
+
+  /// No description provided for @welcomeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage your Bhatti efficiently'**
+  String get welcomeSubtitle;
+
+  /// No description provided for @enterMobileHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter 10 digit number'**
+  String get enterMobileHint;
+
+  /// No description provided for @continueButton.
+  ///
+  /// In en, this message translates to:
+  /// **'CONTINUE'**
+  String get continueButton;
+
+  /// No description provided for @setupBhatti.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup Your Bhatti'**
+  String get setupBhatti;
+
+  /// No description provided for @tellUsAboutBusiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us about your business'**
+  String get tellUsAboutBusiness;
+
+  /// No description provided for @bhattiName.
+  ///
+  /// In en, this message translates to:
+  /// **'Bhatti Name'**
+  String get bhattiName;
+
+  /// No description provided for @bhattiNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Sharma Gur Udhyog'**
+  String get bhattiNameHint;
+
+  /// No description provided for @locationVillage.
+  ///
+  /// In en, this message translates to:
+  /// **'Location / Village'**
+  String get locationVillage;
+
+  /// No description provided for @defaultRateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Default Rate (₹ per Qtl)'**
+  String get defaultRateHint;
+
+  /// No description provided for @finishSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'FINISH SETUP'**
+  String get finishSetup;
+
+  /// No description provided for @ownerName.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner Name'**
+  String get ownerName;
+
+  /// No description provided for @logout.
+  ///
+  /// In en, this message translates to:
+  /// **'Logout'**
+  String get logout;
+
+  /// No description provided for @logoutConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to logout?'**
+  String get logoutConfirm;
+
+  /// No description provided for @verifyOtp.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify OTP'**
+  String get verifyOtp;
+
+  /// No description provided for @otpSentTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the 4-digit code sent to'**
+  String get otpSentTo;
+
+  /// No description provided for @resendOtp.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend OTP'**
+  String get resendOtp;
+
+  /// No description provided for @invalidOtp.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid OTP. Please try again.'**
+  String get invalidOtp;
+
+  /// No description provided for @verifyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'VERIFY & CONTINUE'**
+  String get verifyButton;
 }
 
 class _AppLocalizationsDelegate

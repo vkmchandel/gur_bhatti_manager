@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:gur_bhatti_manager/l10n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:gur_bhatti_manager/features/auth/data/auth_provider.dart';
 
 import '../../../data/demo_catalog.dart';
 
@@ -12,6 +14,9 @@ class DashboardScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final l10n = AppLocalizations.of(context)!;
+    final authProvider = context.watch<AuthProvider>();
+    final bhatti = authProvider.bhatti;
+    
     final session = DemoCatalog.activeSession();
     final sid = session?.id ?? DemoCatalog.activeSessionId;
 
@@ -25,23 +30,48 @@ class DashboardScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: scheme.surface,
       appBar: AppBar(
+        leadingWidth: 56,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: Image.asset(
+            'assets/images/bhatti_logo.png',
+            fit: BoxFit.contain,
+          ),
+        ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(l10n.appTitle, style: theme.textTheme.headlineSmall?.copyWith(fontSize: 18, letterSpacing: 1)),
-            if (session != null)
-              Text(
-                '${l10n.season} ${session.name.toUpperCase()}',
-                style: theme.textTheme.labelSmall?.copyWith(color: scheme.primary, fontWeight: FontWeight.w800),
+            Text(
+              bhatti?.bhattiName ?? l10n.appTitle,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
               ),
+              overflow: TextOverflow.ellipsis,
+            ),
+            _buildSessionChip(context, theme, scheme, session),
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => context.push('/settings/sessions'),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: InkWell(
+              onTap: () => context.push('/settings'),
+              borderRadius: BorderRadius.circular(20),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: scheme.secondary,
+                child: Text(
+                  (bhatti?.ownerName.isNotEmpty == true) ? bhatti!.ownerName[0].toUpperCase() : 'U',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: Scrollbar(
@@ -159,6 +189,110 @@ class DashboardScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSessionChip(BuildContext context, ThemeData theme, ColorScheme scheme, dynamic session) {
+    return InkWell(
+      onTap: () => _showSessionPicker(context),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            session?.name ?? 'Select Session',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: scheme.primary.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Icon(Icons.arrow_drop_down, size: 16, color: scheme.primary.withValues(alpha: 0.8)),
+        ],
+      ),
+    );
+  }
+
+  void _showSessionPicker(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final sessions = DemoCatalog.sessions;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Switch Season', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded),
+                        style: IconButton.styleFrom(backgroundColor: Colors.grey[100]),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...sessions.map((s) => ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: s.isActive ? scheme.primary.withValues(alpha: 0.1) : Colors.grey[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.history_edu_rounded, 
+                      color: s.isActive ? scheme.primary : Colors.grey[600],
+                      size: 20,
+                    ),
+                  ),
+                  title: Text(
+                    s.name, 
+                    style: TextStyle(
+                      fontWeight: s.isActive ? FontWeight.bold : FontWeight.normal,
+                      color: s.isActive ? scheme.primary : Colors.black87,
+                    ),
+                  ),
+                  subtitle: Text('Season: ${s.startDate.year}-${s.endDate.year}'),
+                  trailing: s.isActive 
+                      ? Icon(Icons.check_circle_rounded, color: scheme.primary) 
+                      : null,
+                  onTap: () {
+                    // In a real app, this would call sessionProvider.setActiveSession(s.id)
+                    Navigator.pop(context);
+                  },
+                )),
+                const Divider(height: 32),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      context.push('/settings/sessions');
+                    },
+                    icon: const Icon(Icons.settings_outlined),
+                    label: const Text('Manage All Seasons'),
+                    style: TextButton.styleFrom(foregroundColor: scheme.primary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

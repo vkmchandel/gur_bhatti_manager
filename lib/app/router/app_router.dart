@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/presentation/signup_screen.dart';
+import '../../features/auth/presentation/otp_screen.dart';
+import '../../features/auth/presentation/bhatti_setup_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/farmer/presentation/add_payment_screen.dart';
 import '../../features/farmer/presentation/farmer_ledger_screen.dart';
@@ -18,8 +21,26 @@ abstract final class AppRouter {
 
   static final GoRouter router = GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/home',
+    initialLocation: '/signup',
     routes: [
+      GoRoute(
+        path: '/signup',
+        name: 'signup',
+        builder: (context, state) => const SignupScreen(),
+      ),
+      GoRoute(
+        path: '/otp',
+        name: 'otp',
+        builder: (context, state) {
+          final mobile = state.extra as String? ?? '';
+          return OtpScreen(mobileNumber: mobile);
+        },
+      ),
+      GoRoute(
+        path: '/onboarding',
+        name: 'onboarding',
+        builder: (context, state) => const BhattiSetupScreen(),
+      ),
       GoRoute(
         path: '/procurement/receipt/:procurementId',
         name: 'procurement-receipt',
@@ -37,8 +58,8 @@ abstract final class AppRouter {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/home',
-                name: 'home',
+                path: '/dashboard',
+                name: 'dashboard',
                 pageBuilder: (context, state) => const NoTransitionPage<void>(
                   child: DashboardScreen(),
                 ),

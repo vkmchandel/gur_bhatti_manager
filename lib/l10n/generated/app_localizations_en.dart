@@ -349,4 +349,64 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get share => 'Share';
+
+  @override
+  String get trolleys => 'Trolleys';
+
+  @override
+  String get welcomeTitle => 'Welcome to GurBatti Manager';
+
+  @override
+  String get welcomeSubtitle => 'Manage your Bhatti efficiently';
+
+  @override
+  String get enterMobileHint => 'Enter 10 digit number';
+
+  @override
+  String get continueButton => 'CONTINUE';
+
+  @override
+  String get setupBhatti => 'Setup Your Bhatti';
+
+  @override
+  String get tellUsAboutBusiness => 'Tell us about your business';
+
+  @override
+  String get bhattiName => 'Bhatti Name';
+
+  @override
+  String get bhattiNameHint => 'e.g. Sharma Gur Udhyog';
+
+  @override
+  String get locationVillage => 'Location / Village';
+
+  @override
+  String get defaultRateHint => 'Default Rate (₹ per Qtl)';
+
+  @override
+  String get finishSetup => 'FINISH SETUP';
+
+  @override
+  String get ownerName => 'Owner Name';
+
+  @override
+  String get logout => 'Logout';
+
+  @override
+  String get logoutConfirm => 'Are you sure you want to logout?';
+
+  @override
+  String get verifyOtp => 'Verify OTP';
+
+  @override
+  String get otpSentTo => 'Enter the 4-digit code sent to';
+
+  @override
+  String get resendOtp => 'Resend OTP';
+
+  @override
+  String get invalidOtp => 'Invalid OTP. Please try again.';
+
+  @override
+  String get verifyButton => 'VERIFY & CONTINUE';
 }

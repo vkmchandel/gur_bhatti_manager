@@ -252,7 +252,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get payNow => 'अभी भुगतान करें';
 
   @override
-  String get activeSession => 'Active Session';
+  String get activeSession => 'सक्रिय सत्र';
 
   @override
   String get recentSupply => 'Recent Supply';
@@ -348,4 +348,64 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get share => 'साझा करें';
+
+  @override
+  String get trolleys => 'ट्रॉलियां';
+
+  @override
+  String get welcomeTitle => 'गुड़ भट्टी मैनेजर में आपका स्वागत है';
+
+  @override
+  String get welcomeSubtitle => 'अपनी भट्टी का प्रबंधन कुशलतापूर्वक करें';
+
+  @override
+  String get enterMobileHint => '10 अंकों का नंबर दर्ज करें';
+
+  @override
+  String get continueButton => 'जारी रखें';
+
+  @override
+  String get setupBhatti => 'अपनी भट्टी सेटअप करें';
+
+  @override
+  String get tellUsAboutBusiness => 'हमें अपने व्यवसाय के बारे में बताएं';
+
+  @override
+  String get bhattiName => 'भट्टी का नाम';
+
+  @override
+  String get bhattiNameHint => 'उदा. शर्मा गुड़ उद्योग';
+
+  @override
+  String get locationVillage => 'स्थान / गांव';
+
+  @override
+  String get defaultRateHint => 'डिफ़ॉल्ट दर (₹ प्रति कुंतल)';
+
+  @override
+  String get finishSetup => 'सेटअप पूर्ण करें';
+
+  @override
+  String get ownerName => 'मालिक का नाम';
+
+  @override
+  String get logout => 'लॉगआउट';
+
+  @override
+  String get logoutConfirm => 'क्या आप वाकई लॉगआउट करना चाहते हैं?';
+
+  @override
+  String get verifyOtp => 'OTP सत्यापित करें';
+
+  @override
+  String get otpSentTo => 'दर्ज करें 4-अंकीय कोड जो भेजा गया है';
+
+  @override
+  String get resendOtp => 'OTP पुनः भेजें';
+
+  @override
+  String get invalidOtp => 'अमान्य OTP। कृपया पुनः प्रयास करें।';
+
+  @override
+  String get verifyButton => 'सत्यापित करें और जारी रखें';
 }

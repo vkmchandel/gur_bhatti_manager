@@ -51,7 +51,7 @@ class _ProcurementLogScreenState extends State<ProcurementLogScreen> {
               ),
             ),
             Text(
-              'ACTIVE SESSION: ${DemoCatalog.activeSession()?.name ?? 'N/A'}',
+              '${l10n.activeSession.toUpperCase()}: ${DemoCatalog.activeSession()?.name ?? 'N/A'}',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: Colors.grey,
                 fontWeight: FontWeight.bold,
@@ -132,7 +132,7 @@ class _ProcurementLogScreenState extends State<ProcurementLogScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _StatItem(label: 'TROLLEYS', value: trolleys.toString()),
+          _StatItem(label: l10n.trolleys.toUpperCase(), value: trolleys.toString()),
           _VerticalDivider(),
           _StatItem(label: l10n.totalWeight.toUpperCase(), value: '${weight.toStringAsFixed(1)} Qtl'),
           _VerticalDivider(),
@@ -269,9 +269,9 @@ class _ProcurementCard extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text(
-                        'DATE',
-                        style: TextStyle(
+                      Text(
+                        l10n.date.toUpperCase(),
+                        style: const TextStyle(
                           color: Color(0xFF64748B),
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
@@ -301,9 +301,9 @@ class _ProcurementCard extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'NET WEIGHT',
-                        style: TextStyle(
+                      Text(
+                        l10n.netWeight.toUpperCase(),
+                        style: const TextStyle(
                           color: Color(0xFF64748B),
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
@@ -324,9 +324,9 @@ class _ProcurementCard extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text(
-                        'TOTAL VALUE',
-                        style: TextStyle(
+                      Text(
+                        l10n.totalValue.toUpperCase(),
+                        style: const TextStyle(
                           color: Color(0xFF64748B),
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
